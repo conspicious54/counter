@@ -17,6 +17,14 @@ import type { Candidate, Data, Food, Item, Parsed, Recipe, Unit } from "@/lib/ty
 import { fmt, modifyRecipe, scale, supportedUnits, totals } from "@/lib/nutrition";
 import { request } from "@/lib/store";
 import { rankFoods, compatible, matchScore } from "@/lib/matching";
+import {
+  completeNutrition,
+  missingNutrition,
+  barcodeCandidate,
+  nutritionCount,
+  combineBarcodeNutrition,
+  sameBarcode,
+} from "@/lib/barcode-nutrition";
 import { lookupFood } from "@/lib/food-lookup";
 import { simpleParse } from "@/lib/simple-parse";
 import {
@@ -58,6 +66,8 @@ export function FoodSheet({
   const [answer, setAnswer] = useState("");
   const [code, setCode] = useState("");
   const [manual, setManual] = useState(false);
+  const [manualInitial, setManualInitial] = useState<Food | undefined>();
+  const [manualIndex, setManualIndex] = useState<number | null>(null);
   const [scanner, setScanner] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -112,6 +122,8 @@ export function FoodSheet({
       setError("");
       setClarification("");
       setManual(false);
+      setManualInitial(undefined);
+      setManualIndex(null);
       setEditing(null);
       setScanner(false);
     } else {
@@ -267,22 +279,37 @@ export function FoodSheet({
       setError("");
       void (async () => {
         try {
-          const cached = data.foods.find((f) => f.barcode === value);
-          const f =
-            cached || (await request("/api/barcode?code=" + encodeURIComponent(value))).food;
+          const cached = data.foods
+            .filter((f) => sameBarcode(f.barcode, value))
+            .sort(
+              (a, b) =>
+                Number(completeNutrition(b)) - Number(completeNutrition(a)) ||
+                Number(b.source === "Custom") - Number(a.source === "Custom") ||
+                Number(a.source === "AI estimate") - Number(b.source === "AI estimate"),
+            )[0];
+          const reusable = cached && cached.source !== "AI estimate" && completeNutrition(cached);
+          let f: Food | undefined = cached;
+          if (!reusable && navigator.onLine) {
+            try {
+              const fresh = (await request("/api/barcode?code=" + encodeURIComponent(value)))
+                .food as Food | null;
+              f = fresh
+                ? cached && cached.source !== "AI estimate"
+                  ? combineBarcodeNutrition(cached, fresh)
+                  : fresh
+                : cached;
+            } catch (e) {
+              if (!cached) throw e;
+            }
+          }
           if (!f) {
             setError("No product found. Enter its nutrition label once to save it for next time.");
+            setManualInitial(undefined);
+            setManualIndex(null);
             setManual(true);
             return;
           }
-          receive([
-            {
-              food: f,
-              quantity: f.portions?.serving ? 1 : 100,
-              unit: f.portions?.serving ? "serving" : f.basis.unit,
-              alternatives: [f],
-            },
-          ]);
+          receive([barcodeCandidate(f)]);
         } catch (e) {
           setError((e as Error).message);
         } finally {
@@ -296,7 +323,12 @@ export function FoodSheet({
     receive([
       {
         food,
-        quantity: food.portions?.serving ? 1 : food.portions?.piece ? 1 : 100,
+        quantity:
+          food.basis.unit === "serving" || food.portions?.serving
+            ? 1
+            : food.portions?.piece
+              ? 1
+              : 100,
         unit: food.portions?.serving ? "serving" : food.portions?.piece ? "piece" : food.basis.unit,
         alternatives: [food],
       },
@@ -326,7 +358,9 @@ export function FoodSheet({
   let invalid = false;
   try {
     combined = totals(candidates);
-    invalid = candidates.some((c) => !!c.warning);
+    invalid = candidates.some(
+      (c) => !!c.warning || (!!c.food.barcode && nutritionCount(c.food) === 0),
+    );
   } catch {
     invalid = true;
   }
@@ -625,7 +659,14 @@ export function FoodSheet({
                 ))}
             </div>
           )}
-          <button className="text-button manual-link" onClick={() => setManual(true)}>
+          <button
+            className="text-button manual-link"
+            onClick={() => {
+              setManualInitial(undefined);
+              setManualIndex(null);
+              setManual(true);
+            }}
+          >
             <Plus size={14} />
             Enter nutrition label manually
           </button>
@@ -633,13 +674,32 @@ export function FoodSheet({
       )}
       {manual && (
         <ManualFood
-          barcode={code}
-          onCancel={() => setManual(false)}
+          barcode={manualInitial?.barcode || (method === "scan" ? code : "")}
+          initialFood={manualInitial}
+          onCancel={() => {
+            setManual(false);
+            setManualInitial(undefined);
+            setManualIndex(null);
+          }}
           onSave={(f) => {
             try {
               onFood(f);
-              choose(f);
+              if (manualIndex !== null) {
+                setCandidates((previous) =>
+                  previous.map((c, index) => {
+                    if (index !== manualIndex) return c;
+                    try {
+                      scale({ ...c, food: f });
+                      return { ...c, food: f, warning: undefined, alternatives: [f] };
+                    } catch {
+                      return barcodeCandidate(f);
+                    }
+                  }),
+                );
+              } else choose(f);
               setManual(false);
+              setManualInitial(undefined);
+              setManualIndex(null);
               setError("");
             } catch (e) {
               setError((e as Error).message);
@@ -711,6 +771,78 @@ export function FoodSheet({
                   <p className="estimate-note">
                     Approximate macros · {c.food.estimate.assumptions}
                   </p>
+                )}
+                {c.food.nutritionSources && (
+                  <p className="estimate-note">
+                    Nutrition from {c.food.nutritionSources.join(" + ")}; same barcode.
+                  </p>
+                )}
+                {missingNutrition(c.food).length > 0 && (
+                  <div className="missing-nutrition" role="status">
+                    <p>
+                      Product identified · missing {missingNutrition(c.food).join(", ")} in this
+                      product record.
+                    </p>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        setManualInitial(c.food);
+                        setManualIndex(i);
+                        setManual(true);
+                      }}
+                    >
+                      Complete nutrition label
+                    </button>
+                    {config.ai && (
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={busy}
+                        onClick={async () => {
+                          setBusy(true);
+                          setError("");
+                          try {
+                            const result = await request("/api/estimate", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                name: c.food.name,
+                                brand: c.food.brand || null,
+                                preparation: c.food.preparation || null,
+                                quantity: 1,
+                                unit: c.food.basis.unit,
+                              }),
+                            });
+                            const food = {
+                              ...result.food,
+                              barcode: c.food.barcode,
+                              ...(result.food.basis.unit === c.food.basis.unit
+                                ? { portions: c.food.portions }
+                                : {}),
+                            };
+                            setCandidates((previous) =>
+                              previous.map((item, index) =>
+                                index === i
+                                  ? {
+                                      ...barcodeCandidate(food),
+                                      quantity: c.quantity,
+                                      unit: c.unit,
+                                    }
+                                  : item,
+                              ),
+                            );
+                          } catch (e) {
+                            setError((e as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        Use AI estimate instead
+                      </button>
+                    )}
+                  </div>
                 )}
                 <div className="quantity-line">
                   <input
@@ -914,10 +1046,12 @@ export function FoodSheet({
 }
 export function ManualFood({
   barcode,
+  initialFood,
   onSave,
   onCancel,
 }: {
   barcode: string;
+  initialFood?: Food;
   onSave: (food: Food) => void;
   onCancel: () => void;
 }) {
@@ -940,7 +1074,14 @@ export function ManualFood({
           setError("Nutrition values must be zero or greater.");
           return;
         }
+        if (Object.values(nutrients).every((x) => x === null)) {
+          setError("Enter at least one nutrition value from the label.");
+          return;
+        }
         onSave({
+          ...(initialFood?.basis.unit === String(fd.get("unit"))
+            ? { portions: initialFood?.portions }
+            : {}),
           id: "custom-" + crypto.randomUUID(),
           name: String(fd.get("name")).trim(),
           brand: String(fd.get("brand")).trim() || undefined,
@@ -956,20 +1097,33 @@ export function ManualFood({
       </p>
       <label>
         Food name
-        <input name="name" placeholder="Product name" required maxLength={160} />
+        <input
+          name="name"
+          placeholder="Product name"
+          defaultValue={initialFood?.name}
+          required
+          maxLength={160}
+        />
       </label>
       <label>
         Brand <span className="muted">(optional)</span>
-        <input name="brand" placeholder="Brand" maxLength={100} />
+        <input name="brand" placeholder="Brand" defaultValue={initialFood?.brand} maxLength={100} />
       </label>
       <div className="field-pair">
         <label>
           Values per
-          <input name="basis" type="number" min="0.01" step="any" defaultValue="100" required />
+          <input
+            name="basis"
+            type="number"
+            min="0.01"
+            step="any"
+            defaultValue={initialFood?.basis.quantity || 100}
+            required
+          />
         </label>
         <label>
           Unit
-          <select name="unit">
+          <select name="unit" defaultValue={initialFood?.basis.unit || "g"}>
             <option value="g">grams</option>
             <option value="ml">milliliters</option>
             <option value="serving">serving</option>
@@ -980,7 +1134,14 @@ export function ManualFood({
         {["calories", "protein", "carbs", "fat"].map((k) => (
           <label key={k}>
             {k === "calories" ? "Calories (kcal)" : k + " (g)"}
-            <input name={k} type="number" min="0" step="any" placeholder="Unknown" />
+            <input
+              name={k}
+              type="number"
+              min="0"
+              step="any"
+              placeholder="Unknown"
+              defaultValue={initialFood?.nutrients[k as keyof Food["nutrients"]] ?? ""}
+            />
           </label>
         ))}
       </div>

@@ -1768,3 +1768,42 @@ h1 {
   color: var(--muted-foreground, #777);
   margin: 6px 0 10px;
 }
+
+.scanner-torch {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #ffffff55;
+  border-radius: 20px;
+  padding: 9px 12px;
+  color: white;
+  background: #0009;
+  font-size: 12px;
+  min-height: 44px;
+}
+.scanner-torch[aria-pressed="true"] {
+  color: #201d10;
+  background: #fff1b5;
+}
+.scanner-torch:disabled {
+  opacity: 0.45;
+}
+
+.missing-nutrition {
+  padding: 10px 12px;
+  margin: 8px 0;
+  border-radius: 10px;
+  background: var(--surface, #f4f4f1);
+  font-size: 12px;
+}
+.missing-nutrition p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+.missing-nutrition .text-button {
+  margin-right: 14px;
+  font-size: 12px;
+}

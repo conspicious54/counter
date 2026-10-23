@@ -27,6 +27,7 @@ export type Food = {
     referenceLabel: string;
     createdAt: string;
   };
+  nutritionSources?: string[];
   barcode?: string;
   basis: { quantity: number; unit: "g" | "ml" | "serving" };
   nutrients: Nutrients;

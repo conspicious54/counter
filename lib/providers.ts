@@ -1,12 +1,35 @@
 import type { Food } from "./types";
+import {
+  fromOpenFoodFacts,
+  resolveBarcode,
+  sameBarcode,
+  numeric,
+  nutritionCount,
+} from "./barcode-nutrition";
 import { external } from "./server";
 const nutrientIds = { calories: 1008, protein: 1003, carbs: 1005, fat: 1004 };
 // USDA foodNutrients are normalized per 100 g, including branded search records.
 export function fromUSDA(f: any): Food {
   const nutrients = Object.fromEntries(
     Object.entries(nutrientIds).map(([k, id]) => {
-      const n = f.foodNutrients?.find((x: any) => (x.nutrientId ?? x.nutrient?.id) === id);
-      return [k, Number.isFinite(n?.value ?? n?.amount) ? (n.value ?? n.amount) : null];
+      const ids = k === "calories" ? [1008, 2048, 2047] : [id];
+      for (const nutrientID of ids) {
+        const n = f.foodNutrients?.find(
+          (x: any) => (x.nutrientId ?? x.nutrient?.id) === nutrientID,
+        );
+        const value = numeric(n?.value ?? n?.amount);
+        if (value !== null) return [k, value];
+      }
+      if (k === "calories") {
+        const kj = f.foodNutrients?.find((x: any) => (x.nutrientId ?? x.nutrient?.id) === 1062);
+        const value = numeric(kj?.value ?? kj?.amount);
+        if (value !== null) return [k, value / 4.184];
+      }
+      const serving = numeric(f.servingSize);
+      const label = numeric(f.labelNutrients?.[k === "carbs" ? "carbohydrates" : k]?.value);
+      if (serving && label !== null && ["g", "grm"].includes(f.servingSizeUnit?.toLowerCase()))
+        return [k, (label * 100) / serving];
+      return [k, null];
     }),
   ) as Food["nutrients"];
   const portions: Food["portions"] = {};
@@ -70,48 +93,48 @@ export async function usdaDetail(food: Food) {
   return fromUSDA(f);
 }
 export async function barcodeLookup(code: string): Promise<Food | null> {
-  const data = await external(
-    `https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=code,product_name,brands,serving_size,serving_quantity,product_quantity_unit,nutriments`,
-    { headers: { "User-Agent": "StillMacroTracker/1.0 (personal nutrition logger)" } },
-  );
-  if (data.status === 1) {
-    const p = data.product,
-      n = p.nutriments || {};
-    const value = (key: string) => (Number.isFinite(n[key]) ? n[key] : null);
-    const liquid = p.product_quantity_unit === "ml";
-    const basisUnit = liquid ? "ml" : "g";
-    const serving = p.serving_size?.match(/([\d.]+)\s*(g|ml)\b/i);
-    return {
-      id: `off-${code}`,
-      barcode: code,
-      name: p.product_name || "Packaged food",
-      brand: p.brands,
-      source: "Open Food Facts",
-      basis: { quantity: 100, unit: basisUnit },
-      nutrients: {
-        calories:
-          value("energy-kcal_100g") ??
-          (value("energy_100g") === null ? null : value("energy_100g")! / 4.184),
-        protein: value("proteins_100g"),
-        carbs: value("carbohydrates_100g"),
-        fat: value("fat_100g"),
-      },
-      portions:
-        serving && serving[2].toLowerCase() === basisUnit
-          ? { serving: { quantity: Number(serving[1]), unit: basisUnit } }
-          : {},
-    };
-  }
-  if (process.env.USDA_API_KEY) {
-    const foods = await usdaSearch(code, true);
-    const exact = foods.find((f) => f.id);
-    if (exact) {
-      const raw = await external(
-        `https://api.nal.usda.gov/fdc/v1/food/${exact.id.slice(5)}?api_key=${encodeURIComponent(process.env.USDA_API_KEY)}`,
+  return resolveBarcode(
+    code,
+    async () => {
+      const data = await external(
+        `https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=code,product_name,product_name_en,brands,serving_size,serving_quantity,serving_quantity_unit,product_quantity_unit,nutrition_data_per,nutriments`,
+        {
+          headers: { "User-Agent": "StillMacroTracker/1.0 (personal nutrition logger)" },
+          signal: AbortSignal.timeout(10000),
+          next: { revalidate: 3600 },
+        },
       );
-      if (String(raw.gtinUpc).replace(/^0+/, "") === code.replace(/^0+/, ""))
-        return { ...fromUSDA(raw), barcode: code };
-    }
-  }
-  return null;
+      return data.status === 1 ? fromOpenFoodFacts(data.product, code) : null;
+    },
+    async () => {
+      if (!process.env.USDA_API_KEY) return [];
+      const key = encodeURIComponent(process.env.USDA_API_KEY);
+      const result = await external(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: code, dataType: ["Branded"], pageSize: 25 }),
+        signal: AbortSignal.timeout(10000),
+        next: { revalidate: 3600 },
+      });
+      const exact = (result.foods || [])
+        .filter((f: any) => sameBarcode(String(f.gtinUpc || ""), code))
+        .sort((a: any, b: any) => nutritionCount(fromUSDA(b)) - nutritionCount(fromUSDA(a)))
+        .slice(0, 4);
+      return Promise.all(
+        exact.map(async (f: any) => {
+          try {
+            const raw = await external(
+              `https://api.nal.usda.gov/fdc/v1/food/${f.fdcId}?api_key=${key}`,
+              { signal: AbortSignal.timeout(10000), next: { revalidate: 3600 } },
+            );
+            if (!sameBarcode(String(raw.gtinUpc || ""), code))
+              return { ...fromUSDA(f), barcode: code };
+            return { ...fromUSDA(raw), barcode: code };
+          } catch {
+            return { ...fromUSDA(f), barcode: code };
+          }
+        }),
+      );
+    },
+  );
 }

@@ -129,3 +129,12 @@ Estimates are visibly labeled **AI estimate** in confirmation, Today/History, an
 Cost controls: a 500-output-token cap per estimate, no estimate call for database hits, a bounded seven-day in-process cache with in-flight deduplication, and persistent reuse of confirmed foods on the device. The in-process cache may reset across serverless instances/redeploys; device food memory is the durable cache. New estimates need connectivity. The existing personal/Supabase authentication and API throttle protect the paid endpoint.
 
 Reference quantities are 100 g, 100 ml, or one stated serving/piece/cup/etc. Only known mass units convert to grams. A serving-only estimate never manufactures a serving-to-gram conversion. Missing nutrients stay null, and totals preserve that unknown state. Tests cover automatic fallback, real-food priority, exact cached reuse, restaurant/portion separation, nutrient scaling, missing nutrients, invalid outputs and database outages.
+
+
+## Barcode nutrition and camera light
+
+The scanner has a Flash on/off control backed by ZXing's real camera torch constraint. It is enabled only when the active camera exposes torch controls. Camera tracks and torch are stopped when a scan succeeds or the scanner closes. Browser/device capability still determines flashlight availability; physical iPhone torch operation needs a hardware check.
+
+Barcode lookup accepts both per-100 g/ml and per-serving Open Food Facts values, numeric strings, explicit serving weights/volumes, and kJ energy. Serving-only data remains serving-based instead of assuming grams. An identified product with missing macros proceeds to USDA exact GTIN matches; unrelated barcode search hits cannot supply facts. Missing nutrients can be filled from another record of the same barcode only when reference bases or an explicit serving conversion are compatible. Source provenance is shown for combined records. USDA parsing includes Atwater calorie nutrient IDs and label nutrients with verified gram serving sizes.
+
+Incomplete saved products are rechecked online rather than cached forever. Missing fields stay explicitly unknown; a record without any nutrition cannot be logged as if complete. The confirmation offers label completion with known values/name prefilled or an optional clearly labeled AI estimate. A corrected custom label is saved for repeat scanning. Neither missing database records nor AI estimates are represented as verified nutrition facts.

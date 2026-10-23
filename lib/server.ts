@@ -41,7 +41,10 @@ export async function external(
   url: string,
   options: RequestInit & { next?: { revalidate: number } } = {},
 ) {
-  const response = await fetch(url, { ...options, signal: AbortSignal.timeout(20000) });
+  const response = await fetch(url, {
+    ...options,
+    signal: options.signal ?? AbortSignal.timeout(20000),
+  });
   if (!response.ok)
     throw new Error(`Nutrition or AI service unavailable (${response.status}). Please retry.`);
   return response.json();
