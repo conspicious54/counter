@@ -1,9 +1,34 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square, RotateCcw } from "lucide-react";
+import { voiceActivity } from "@/lib/voice-activity";
 import { request } from "@/lib/store";
 import { Button } from "./ui/button";
-export function Voice({ onText, enabled }: { onText: (text: string) => void; enabled: boolean }) {
+export function Voice({
+  onText,
+  enabled,
+  autoStart = false,
+}: {
+  onText: (text: string) => void;
+  enabled: boolean;
+  autoStart?: boolean;
+}) {
+  const started = useRef(false);
+  const analysis = useRef<AudioContext | null>(null);
+  const frame = useRef<number | null>(null);
+  const starting = useRef(false);
+  function stopAnalysis() {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    void analysis.current?.close().catch(() => {});
+    analysis.current = null;
+  }
+  useEffect(() => {
+    if (autoStart && enabled && !started.current) {
+      started.current = true;
+      void start();
+    }
+  }, [autoStart, enabled]);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -26,6 +51,7 @@ export function Voice({ onText, enabled }: { onText: (text: string) => void; ena
     active.current = true;
     return () => {
       active.current = false;
+      stopAnalysis();
       if (timer.current) clearTimeout(timer.current);
       if (recorder.current?.state === "recording") recorder.current.stop();
       stream.current?.getTracks().forEach((t) => t.stop());
@@ -46,8 +72,11 @@ export function Voice({ onText, enabled }: { onText: (text: string) => void; ena
     }
   }
   async function start() {
+    if (starting.current || recorder.current?.state === "recording") return;
+    starting.current = true;
     setError("");
     try {
+      if (!enabled) throw new Error("Voice transcription is unavailable. Please try again later.");
       if (!navigator.mediaDevices || !window.MediaRecorder)
         throw new Error("Recording needs HTTPS and a browser with microphone support.");
       stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -68,21 +97,46 @@ export function Voice({ onText, enabled }: { onText: (text: string) => void; ena
         if (timer.current) clearTimeout(timer.current);
         stream.current?.getTracks().forEach((t) => t.stop());
         if (!active.current) return;
+        stopAnalysis();
         setRecording(false);
         const blob = new Blob(chunks, { type: r.mimeType });
         setAudio(blob);
         if (enabled) void transcribe(blob);
-        else
-          setError(
-            "Recording works. Transcription needs an OpenAI key; use Type to try sample foods.",
-          );
+        else setError("Voice transcription is unavailable. Please try again later.");
       };
       r.start();
       setAudio(null);
       setRecording(true);
+      // Finish after a natural pause, while retaining a manual stop for noisy rooms.
+      try {
+        const context = new AudioContext();
+        analysis.current = context;
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 2048;
+        context.createMediaStreamSource(stream.current).connect(analyser);
+        await context.resume();
+        const samples = new Float32Array(analyser.fftSize);
+        const shouldFinish = voiceActivity();
+        function listen() {
+          if (r.state !== "recording" || !active.current) return;
+          analyser.getFloatTimeDomainData(samples);
+          const rms = Math.sqrt(samples.reduce((sum, x) => sum + x * x, 0) / samples.length);
+          if (shouldFinish(rms, performance.now())) {
+            r.stop();
+            return;
+          }
+          frame.current = requestAnimationFrame(listen);
+        }
+        listen();
+      } catch {
+        /* Manual stop remains available if audio analysis is unsupported. */
+      }
       timer.current = setTimeout(() => r.state === "recording" && r.stop(), 60000);
     } catch (e) {
+      stream.current?.getTracks().forEach((t) => t.stop());
       setError((e as Error).message);
+    } finally {
+      starting.current = false;
     }
   }
   return (
@@ -99,22 +153,17 @@ export function Voice({ onText, enabled }: { onText: (text: string) => void; ena
       </div>
       <h3>
         {busy
-          ? "Listening back…"
+          ? "Finding your foods…"
           : recording
             ? "Go ahead. We’re listening."
             : "Just say what you ate."}
       </h3>
       <p>
         {recording
-          ? "Tap to finish · up to 60 seconds"
+          ? "Pause when finished · tap to stop anytime"
           : "“200 grams of chicken and 100 grams of rice.”"}
       </p>
-      {!enabled && (
-        <small className="demo-note">
-          Demo mode · recording available, AI transcription not configured
-        </small>
-      )}
-      {audio && (
+      {audio && error && (
         <div className="audio-review">
           <audio controls src={audioUrl} />
           {enabled && (

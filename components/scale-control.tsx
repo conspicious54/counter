@@ -28,6 +28,11 @@ export function ScaleControl({
   useEffect(() => {
     active.current = true;
     setSupported(scaleSupport());
+    if (
+      (window as unknown as { webkit?: { messageHandlers?: { counterScale?: unknown } } }).webkit
+        ?.messageHandlers?.counterScale
+    )
+      void connect();
     return () => {
       active.current = false;
       disconnect.current?.();
@@ -57,6 +62,7 @@ export function ScaleControl({
         (s) => {
           if (active.current) {
             setStatus(s);
+            if (s === "Connected") arm();
             if (s === "Disconnected") {
               trackingRef.current = false;
               setTracking(false);
@@ -109,7 +115,7 @@ export function ScaleControl({
         </Button>
       ) : (
         <>
-          <p>Set the scale to grams. Tare your empty plate, then start weighing this ingredient.</p>
+          <p>Tare your empty plate, then place this ingredient on the scale in grams.</p>
           <div className="scale-live">
             <strong>
               {reading?.grams !== null && reading ? `${reading.grams.toFixed(1)} g` : "— g"}
@@ -140,7 +146,7 @@ export function ScaleControl({
               disabled={!captured}
             >
               <Check size={15} />
-              Keep weight & stop tracking
+              Use weight
             </Button>
           )}
           {tracking && (

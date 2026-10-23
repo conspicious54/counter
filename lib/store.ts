@@ -18,6 +18,27 @@ export const emptyData = (): Data => ({
 export function load() {
   const raw = localStorage.getItem(STORAGE);
   envelope = raw ? JSON.parse(raw) : { data: emptyData(), outbox: [] };
+  // Retire the old sample catalog without losing a recoverable copy of device data.
+  if (
+    raw &&
+    (envelope.data.entries.some((e) => !e.deleted && e.food.source === "Demo") ||
+      envelope.data.foods.some((f) => f.source === "Demo") ||
+      envelope.data.recipes.some((r) => r.items.some((i) => i.food.source === "Demo")))
+  ) {
+    if (!localStorage.getItem("still.sample-backup.v1"))
+      localStorage.setItem("still.sample-backup.v1", raw);
+    const cleaned = {
+      ...envelope.data,
+      entries: envelope.data.entries.map((e) =>
+        e.food.source === "Demo" ? { ...e, deleted: true } : e,
+      ),
+      foods: envelope.data.foods.filter((f) => f.source !== "Demo"),
+      recipes: envelope.data.recipes.filter((r) => !r.items.some((i) => i.food.source === "Demo")),
+    };
+    const next = { ...envelope, data: cleaned, outbox: rows(cleaned) };
+    localStorage.setItem(STORAGE, JSON.stringify(next));
+    envelope = next;
+  }
   if (!raw) localStorage.setItem(STORAGE, JSON.stringify(envelope));
   return envelope.data;
 }

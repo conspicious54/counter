@@ -14,7 +14,6 @@ import {
   Type,
 } from "lucide-react";
 import type { Candidate, Data, Food, Item, Parsed, Recipe, Unit } from "@/lib/types";
-import { demoFoods, demoParse } from "@/lib/demo";
 import { fmt, modifyRecipe, scale, supportedUnits, totals } from "@/lib/nutrition";
 import { request } from "@/lib/store";
 import { rankFoods, compatible, matchScore } from "@/lib/matching";
@@ -85,7 +84,7 @@ export function FoodSheet({
     setFoodResults([]);
     setClarification("");
     setError("");
-    setMethod("type");
+    setMethod("speak");
   }
 
   useEffect(() => {
@@ -101,6 +100,7 @@ export function FoodSheet({
         setError((e as Error).message);
         return;
       }
+      setMethod("speak");
       setAddingIngredient(false);
       setWeighing(null);
       setDraftLoaded(true);
@@ -128,7 +128,8 @@ export function FoodSheet({
     }
   }, [open, draftLoaded, candidates, recipeName, saveRecipe, recipeOnly]);
 
-  const recent = [...data.foods]
+  const recent = data.foods
+    .filter((f) => f.source !== "Demo")
     .sort(
       (a, b) =>
         data.entries.filter((e) => !e.deleted && e.food.id === b.id).length -
@@ -136,10 +137,7 @@ export function FoodSheet({
     )
     .slice(0, 5);
   async function lookup(p: Parsed) {
-    const local = [
-      ...data.foods.filter((f) => !config.usda || f.source !== "Demo"),
-      ...(!config.usda ? demoFoods : []),
-    ];
+    const local = data.foods.filter((f) => f.source !== "Demo");
     let foods = rankFoods(local, p, data.entries);
     const remembered = foods[0];
     if (remembered) {
@@ -190,7 +188,24 @@ export function FoodSheet({
       !/\d|\b(and|but|instead|without)\b/i.test(value) &&
       value.trim().split(/\s+/).length <= 6
     ) {
-      await searchFood(value.replace(/^(?:i had|i ate|add|log)\s+/i, ""));
+      setBusy(true);
+      setError("");
+      try {
+        receive([
+          await lookup({
+            name: value.replace(/^(?:i had|i ate|add|log)\s+/i, ""),
+            brand: null,
+            quantity: 100,
+            unit: "g",
+            preparation: null,
+            action: "add",
+          }),
+        ]);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     setBusy(true);
@@ -211,16 +226,12 @@ export function FoodSheet({
         });
       } else {
         const recipe = data.recipes.find((r) => value.toLowerCase().includes(r.name.toLowerCase()));
-        if (recipe) {
-          const modification = value.split(/\bbut\b/i)[1];
-          parsed = {
-            recipeName: recipe.name,
-            clarification: null,
-            foods: modification
-              ? demoParse(modification.replace(/another/gi, "1").replace(/\b(add|extra)\b/gi, ""))
-              : [],
-          };
-        } else parsed = { foods: demoParse(value), recipeName: null, clarification: null };
+        if (recipe && !/\b(but|instead|without|another|extra)\b/i.test(value)) {
+          parsed = { recipeName: recipe.name, clarification: null, foods: [] };
+        } else
+          throw new Error(
+            "Voice and natural-language parsing are unavailable. Try a measured entry such as 100 g blueberries.",
+          );
       }
       if (parsed.clarification) {
         setClarification(parsed.clarification);
@@ -313,16 +324,13 @@ export function FoodSheet({
     setBusy(true);
     setError("");
     try {
-      let foods = data.foods.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
+      let foods = data.foods.filter(
+        (f) => f.source !== "Demo" && f.name.toLowerCase().includes(search.toLowerCase()),
+      );
       if (config.usda)
         foods = [
           ...foods,
           ...(await request("/api/search?q=" + encodeURIComponent(search) + "&branded=1")).foods,
-        ];
-      else
-        foods = [
-          ...foods,
-          ...demoFoods.filter((f) => f.name.toLowerCase().includes(search.toLowerCase())),
         ];
       setAlternatives([...new Map(foods.map((f) => [f.id, f])).values()]);
     } catch (e) {
@@ -352,7 +360,11 @@ export function FoodSheet({
         preparation: null,
         action: "add",
       };
-      let foods = rankFoods([...data.foods, ...(!config.usda ? demoFoods : [])], p, data.entries);
+      let foods = rankFoods(
+        data.foods.filter((f) => f.source !== "Demo"),
+        p,
+        data.entries,
+      );
       if (config.usda && navigator.onLine) {
         const result = await request("/api/search?q=" + encodeURIComponent(query));
         foods = rankFoods([...foods, ...result.foods], p, data.entries);
@@ -366,7 +378,7 @@ export function FoodSheet({
         throw new Error(
           config.usda
             ? "No exact food found. Try its generic name or enter its label."
-            : "Live USDA search is not configured. Search sample foods or enter a nutrition label.",
+            : "Food search is unavailable. Enter a nutrition label or choose a saved food.",
         );
     } catch (e) {
       setError((e as Error).message);
@@ -481,6 +493,7 @@ export function FoodSheet({
           </div>
           {method === "speak" && (
             <Voice
+              autoStart
               enabled={config.ai}
               onText={(value) => {
                 setText(value);
@@ -514,7 +527,7 @@ export function FoodSheet({
                     ? "Natural language. Real nutrition data."
                     : config.usda
                       ? "USDA lookup · simple entries need no AI"
-                      : "Local/demo lookup · USDA not configured"}
+                      : "Saved foods · nutrition label entry"}
                 </span>
                 <button
                   className="send-button"
@@ -524,18 +537,6 @@ export function FoodSheet({
                   {busy ? <Loader2 className="spin" size={19} /> : <ArrowRight size={19} />}
                 </button>
               </div>
-              {!config.ai && (
-                <button
-                  type="button"
-                  className="sample-prompt"
-                  onClick={() => {
-                    setText("200 g chicken and 100 g rice");
-                    void parse("200 g chicken and 100 g rice");
-                  }}
-                >
-                  Try “200 g chicken and 100 g rice” <ArrowRight size={13} />
-                </button>
-              )}
             </form>
           )}
           {method === "scan" && (

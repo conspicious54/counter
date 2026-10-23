@@ -1,13 +1,29 @@
 import type { Candidate } from "./types";
 import { scale } from "./nutrition";
 const KEY = "still.meal-draft.v1";
-export type MealDraft = { items: Candidate[]; name: string; saveAsMeal: boolean; recipeOnly?: boolean };
+export type MealDraft = {
+  items: Candidate[];
+  name: string;
+  saveAsMeal: boolean;
+  recipeOnly?: boolean;
+};
 export function loadMealDraft(): MealDraft | null {
   const raw = localStorage.getItem(KEY);
   if (!raw) return null;
   const draft = JSON.parse(raw) as MealDraft;
   if (!Array.isArray(draft.items) || typeof draft.name !== "string")
     throw new Error("Your meal draft could not be read. It has been kept on this device.");
+  if (draft.items.some((i) => i.food.source === "Demo")) {
+    if (!localStorage.getItem("still.sample-draft-backup.v1"))
+      localStorage.setItem("still.sample-draft-backup.v1", raw);
+    const cleaned = { ...draft, items: draft.items.filter((i) => i.food.source !== "Demo") };
+    if (!cleaned.items.length) {
+      clearMealDraft();
+      return null;
+    }
+    saveMealDraft(cleaned);
+    return cleaned;
+  }
   return draft;
 }
 export function saveMealDraft(draft: MealDraft) {

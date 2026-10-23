@@ -17,7 +17,21 @@ struct CounterWebView: UIViewRepresentable {
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         context.coordinator.web = web
-        web.load(URLRequest(url: Self.appURL))
+        // Optional locally provisioned session, supplied only at signing time. No API key is embedded.
+        if let token = Bundle.main.object(forInfoDictionaryKey: "CounterPersonalSession") as? String,
+           !token.isEmpty,
+           let expiry = TimeInterval(token.components(separatedBy: ".").first ?? ""),
+           let cookie = HTTPCookie(properties: [
+             .domain: Self.appURL.host!, .path: "/", .name: "counter-session", .value: token,
+             .secure: "TRUE", .expires: Date(timeIntervalSince1970: expiry),
+             HTTPCookiePropertyKey("HttpOnly"): "TRUE", HTTPCookiePropertyKey("SameSite"): "Strict"
+           ]) {
+            web.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) {
+                web.load(URLRequest(url: Self.appURL))
+            }
+        } else {
+            web.load(URLRequest(url: Self.appURL))
+        }
         return web
     }
     func updateUIView(_ uiView: WKWebView, context: Context) {}

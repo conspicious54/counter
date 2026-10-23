@@ -13,7 +13,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000. No keys are required for the explicitly labeled local demo. Use **Add food → Type → Try “200 g chicken and 100 g rice”** or load a sample day. Demo sample foods include cooked chicken, cooked rice, eggs, oats, banana, yogurt, blueberries, milk, peanut butter, and cheddar. Demo parsing is a small deterministic parser, not AI. It intentionally fails for unsupported foods rather than inventing nutrition. You can enter any product's label manually.
+Open http://localhost:3000. Set the server keys below for live food search and voice. There are no sample-food fallbacks or demo controls. Saved foods and manual nutrition-label entry remain available offline.
+
+For a personal deployment, set `COUNTER_ACCESS_CODE` to a long random secret instead of configuring Supabase. Enter it once in the app; an HttpOnly, Secure, SameSite session cookie lasts 180 days. Changing the code revokes existing sessions. Logs remain in device storage; export backups from Settings. This mode does not provide cloud sync. The access code protects paid AI calls; per-process throttling is a secondary limit, not distributed abuse protection.
 
 Open Food Facts barcode lookup is a real server integration and does not need a key. Camera and microphone require HTTPS or localhost. Visiting a laptop's plain HTTP LAN address from an iPhone does not permit camera/microphone access; use an HTTPS deployment or trusted HTTPS development tunnel.
 
@@ -41,7 +43,7 @@ For a complete live natural-language experience, enable **both OpenAI and USDA**
 3. Run `supabase/schema.sql` once in its SQL editor.
 4. Add the public URL and anon key above; restart the app.
 
-The SDK creates and persists a genuine anonymous Auth session. Every row is authorized with `auth.uid() = user_id` RLS; the installation ID is metadata only and grants no access. Server API routes verify the user's access token against Supabase Auth. A production deployment with AI enabled requires Supabase authentication. No service-role key is needed.
+The SDK creates and persists a genuine anonymous Auth session. Every row is authorized with `auth.uid() = user_id` RLS; the installation ID is metadata only and grants no access. Server API routes verify the user's access token against Supabase Auth. A production deployment with AI enabled requires either personal access (`COUNTER_ACCESS_CODE`) or Supabase authentication. No service-role key is needed.
 
 The initial version supports one anonymous browser identity. Its data persists through reloads, but clearing browser storage loses access to that anonymous identity. Use **Settings → Export a backup** to preserve a portable JSON copy. Optional permanent-account linking can later attach to the same anonymous user ID without changing the data schema. Account linking and backup import are not part of this release.
 
@@ -49,7 +51,7 @@ Before opening to a broad public audience, configure Supabase anonymous-sign-in 
 
 ## Core behavior
 
-- **Speak:** tap once to request the microphone/start MediaRecorder; tap again to stop. Server-side transcription feeds the same parsing/matching pipeline as Type. Recordings cap at 60 seconds and stay available for playback/retry after a transcription failure. AI transcription is explicitly unavailable without its key.
+- **Speak:** Add Food opens the microphone automatically (subject to device permission); a natural pause finishes the recording. Manual stop remains available. Server-side transcription feeds the same parsing/matching pipeline as Type. Recordings cap at 60 seconds and stay available for playback/retry after a transcription failure. AI transcription is explicitly unavailable without its key.
 - **Scan:** choosing Scan immediately requests the rear camera and starts ZXing decoding of UPC-A, UPC-E, EAN-8, or EAN-13. Tracks stop when scanning succeeds, the method changes, or the sheet closes. A typed barcode fallback is available. Open Food Facts is first, USDA exact GTIN verification is second. A missing product can be entered from its label and cached locally.
 - **Type:** multi-food structured extraction, optional one-question clarification, source-backed food candidates, quantity editing, alternative search, and one Add All confirmation. The LLM never returns nutritional values.
 - **Memory:** cached food matches are ranked using prior logging frequency, brand and preparation. Recipes can be saved from a confirmation or a previously logged meal. Type or say a saved recipe's name, optionally with modifications. Modified ingredients do not change the saved recipe.
@@ -113,7 +115,6 @@ Use Chrome/Edge on desktop with Web Bluetooth, or build the native iPhone shell 
 
 Hardware evidence: physical scale discovery, FFF0/FFF1 subscription and stable 25.0 g capture were verified from a Mac on October 22, 2026. The 16-byte measurement has a modulo-256 byte sum of 255, signed little-endian tenths of grams at bytes 11–12, gram unit code 2 at byte 13, media 0 at byte 14, and stable flag 1 at byte 15. Only this observed layout is accepted. Both simulator and signed physical-device builds pass. The native app was installed and launched on the paired physical iPhone on October 22, 2026 using an existing development signing identity. Physical iPhone automatic-entry confirmation by the user is pending.
 
+## Voice verification
 
-## Netlify deployment
-
-The repository root is the Next.js app. Import `conspicious54/counter` into Netlify using build command `npm run build`, publish directory `.next`, and Node 22. The committed `netlify.toml` configures these values. Set server credentials through Netlify environment variables using `.env.example`; never commit `.env.local`. Redeploy after changing credentials. The iPhone shell loads https://dumbcount.netlify.app/.
+OpenAI transcription and structured parsing verified with real API requests. Personal access uses signed expiring cookies; credentials stay server-side. Native Etekcity weighing was verified on the physical iPhone. Selecting Weigh connects automatically in Counter and arms fresh stable gram readings on connection. Tap Use weight, then confirm the food once.

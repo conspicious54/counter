@@ -1,7 +1,8 @@
+import { validSession, SESSION_COOKIE } from "./personal-session";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 const requests = new Map<string, { count: number; reset: number }>();
-function throttle(user: string) {
+export function throttle(user: string) {
   const now = Date.now();
   for (const [key, value] of requests) if (value.reset < now) requests.delete(key);
   const bucket = requests.get(user) || { count: 0, reset: now + 60000 };
@@ -12,7 +13,7 @@ function throttle(user: string) {
 // Verify Supabase JWTs with Auth, never trust an installation ID or unsigned claims.
 export async function guard(req: NextRequest, privateService = false) {
   const origin = req.headers.get("origin");
-  if (origin && origin !== req.nextUrl.origin)
+  if (origin && new URL(origin).host !== req.headers.get("host"))
     throw new Error("Cross-origin requests are not allowed.");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -22,8 +23,13 @@ export async function guard(req: NextRequest, privateService = false) {
     const { data, error } = await createClient(url, key).auth.getUser(token);
     if (error || !data.user) throw new Error("Session expired. Please reconnect.");
     if (privateService) throttle(data.user.id);
+  } else if (privateService && process.env.COUNTER_ACCESS_CODE) {
+    const token = req.cookies.get(SESSION_COOKIE)?.value;
+    if (!validSession(token, process.env.COUNTER_ACCESS_CODE))
+      throw new Error("Unlock Counter to use voice logging.");
+    throttle("personal");
   } else if (privateService && process.env.NODE_ENV === "production")
-    throw new Error("Configure Supabase authentication before enabling AI on a public deployment.");
+    throw new Error("Personal access has not been configured.");
 }
 export function failure(e: unknown) {
   return NextResponse.json(
@@ -42,8 +48,7 @@ export async function external(
 }
 export async function ai(path: string, body: unknown) {
   const key = process.env.OPENAI_API_KEY;
-  if (!key)
-    throw new Error("OpenAI is not configured. Use Type in demo mode, or add your server API key.");
+  if (!key) throw new Error("Voice parsing is unavailable. Please try again later.");
   return external(`https://api.openai.com/v1/${path}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },

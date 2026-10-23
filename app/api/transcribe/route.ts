@@ -4,9 +4,7 @@ export async function POST(req: NextRequest) {
   try {
     await guard(req, true);
     if (!process.env.OPENAI_API_KEY)
-      throw new Error(
-        "Voice transcription needs an OpenAI API key. Type or scan while in demo mode.",
-      );
+      throw new Error("Voice transcription is unavailable. Please try again later.");
     const form = await req.formData();
     const audio = form.get("audio");
     if (!(audio instanceof File) || audio.size > 20 * 1024 * 1024)

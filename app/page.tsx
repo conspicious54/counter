@@ -22,7 +22,7 @@ import {
 import type { Data, Entry, Food, Item, Nutrients, Recipe, Targets, Unit } from "@/lib/types";
 import { commit, load, subscribe, sync } from "@/lib/store";
 import { dailyTotals, fmt, keys, localDay, scale, supportedUnits, totals } from "@/lib/nutrition";
-import { demoFoods } from "@/lib/demo";
+import { Unlock } from "@/components/unlock";
 import { FoodSheet } from "@/components/food-sheet";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -41,7 +41,7 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
   const [theme, setTheme] = useState("system");
-  const [config, setConfig] = useState({ ai: false, usda: false, sync: false });
+  const [config, setConfig] = useState({ ai: false, usda: false, sync: false, locked: false });
   const [online, setOnline] = useState(true);
   const [ready, setReady] = useState(false);
   const [group, setGroup] = useState<Entry[] | null>(null);
@@ -194,43 +194,6 @@ export default function Home() {
     d.setDate(d.getDate() + amount);
     setDate(localDay(d));
   }
-  function loadSample() {
-    if (!data) return;
-    try {
-      const now = new Date();
-      const sample = [
-        { food: demoFoods[5], quantity: 200, unit: "g" as Unit },
-        { food: demoFoods[6], quantity: 80, unit: "g" as Unit },
-        { food: demoFoods[3], quantity: 45, unit: "g" as Unit },
-        { food: demoFoods[0], quantity: 180, unit: "g" as Unit },
-        { food: demoFoods[1], quantity: 150, unit: "g" as Unit },
-      ];
-      const ids = [crypto.randomUUID(), crypto.randomUUID()];
-      const samples = sample.map((x, i) => ({
-        ...x,
-        id: crypto.randomUUID(),
-        groupId: ids[i < 3 ? 0 : 1],
-        day: today,
-        timestamp: new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          i < 3 ? 8 : 12,
-          30 + i,
-        ).toISOString(),
-      }));
-      save({
-        ...data,
-        entries: [...data.entries, ...samples],
-        foods: [
-          ...new Map([...data.foods, ...sample.map((x) => x.food)].map((x) => [x.id, x])).values(),
-        ],
-      });
-      notify("Sample entries added · labeled demo data");
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
   function exportData() {
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -300,24 +263,53 @@ export default function Home() {
           <div className="targets-heading">
             <h2>Macronutrient targets</h2>
             <button className="target-link" onClick={() => setSettings(true)}>
-              {hasTargets ? "Edit" : "Set targets"}<Settings2 size={14}/>
+              {hasTargets ? "Edit" : "Set targets"}
+              <Settings2 size={14} />
             </button>
           </div>
           <div className="target-rows">
-            {keys.map(k=>{
-              const amount=ready?total[k]:null;
-              const target=data?.targets[k]||0;
-              const percent=amount!==null&&target>0?Math.round(amount/target*100):null;
-              const unit=k==='calories'?'kcal':'g';
-              return <div className={'target-row target-'+k} key={k}>
-                <div className="target-row-label">
-                  <div><strong>{labels[k]}</strong><span> · {fmt(amount,1)}{target>0?` / ${fmt(target,1)}`:''} {unit}</span></div>
-                  <span className="target-percentage">{percent!==null?`${percent}%`:target>0?'—':'No target'}</span>
+            {keys.map((k) => {
+              const amount = ready ? total[k] : null;
+              const target = data?.targets[k] || 0;
+              const percent =
+                amount !== null && target > 0 ? Math.round((amount / target) * 100) : null;
+              const unit = k === "calories" ? "kcal" : "g";
+              return (
+                <div className={"target-row target-" + k} key={k}>
+                  <div className="target-row-label">
+                    <div>
+                      <strong>{labels[k]}</strong>
+                      <span>
+                        {" "}
+                        · {fmt(amount, 1)}
+                        {target > 0 ? ` / ${fmt(target, 1)}` : ""} {unit}
+                      </span>
+                    </div>
+                    <span className="target-percentage">
+                      {percent !== null ? `${percent}%` : target > 0 ? "—" : "No target"}
+                    </span>
+                  </div>
+                  <div
+                    className="target-bar"
+                    role={percent !== null ? "progressbar" : undefined}
+                    aria-label={`${labels[k]} target`}
+                    aria-valuemin={percent !== null ? 0 : undefined}
+                    aria-valuemax={percent !== null ? 100 : undefined}
+                    aria-valuenow={percent !== null ? Math.min(100, percent) : undefined}
+                    aria-valuetext={
+                      percent !== null
+                        ? `${fmt(amount, 1)} of ${fmt(target, 1)} ${unit}, ${percent}%`
+                        : undefined
+                    }
+                  >
+                    <div
+                      style={{
+                        width: `${percent === null ? 0 : Math.min(100, Math.max(0, percent))}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="target-bar" role={percent!==null?'progressbar':undefined} aria-label={`${labels[k]} target`} aria-valuemin={percent!==null?0:undefined} aria-valuemax={percent!==null?100:undefined} aria-valuenow={percent!==null?Math.min(100,percent):undefined} aria-valuetext={percent!==null?`${fmt(amount,1)} of ${fmt(target,1)} ${unit}, ${percent}%`:undefined}>
-                  <div style={{width:`${percent===null?0:Math.min(100,Math.max(0,percent))}%`}}/>
-                </div>
-              </div>;
+              );
             })}
           </div>
           {keys.some((k) => total[k] === null) && (
@@ -430,26 +422,6 @@ export default function Home() {
             </div>
           )}
         </section>
-        {!config.ai && (
-          <aside className="demo-banner">
-            <span className="demo-badge">DEMO</span>
-            <p>
-              {entries.length
-                ? "Sample foods are labeled. Barcode lookup is live."
-                : "Make yourself at home. Try a sample day."}
-            </p>
-            {!entries.length && tab === "today" && (
-              <button
-                className="icon-button"
-                aria-label="Load sample day"
-                disabled={!data}
-                onClick={loadSample}
-              >
-                <ArrowRight size={17} />
-              </button>
-            )}
-          </aside>
-        )}
         <footer className="page-footer">
           <Leaf size={12} />
           <span>Less tracking. More living.</span>
@@ -487,15 +459,22 @@ export default function Home() {
         </div>
       )}
       {data && (
-        <FoodSheet
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          data={data}
-          config={config}
-          onAdd={add}
-          onFood={saveFood}
-          onRecipe={saveRecipe}
-        />
+        <>
+          <Unlock
+            open={addOpen && config.locked}
+            onClose={() => setAddOpen(false)}
+            onUnlocked={() => setConfig((c) => ({ ...c, locked: false }))}
+          />
+          <FoodSheet
+            open={addOpen && !config.locked}
+            onOpenChange={setAddOpen}
+            data={data}
+            config={config}
+            onAdd={add}
+            onFood={saveFood}
+            onRecipe={saveRecipe}
+          />
+        </>
       )}
       <Sheet
         open={!!edit}
