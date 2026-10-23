@@ -19,6 +19,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.connorbyers.counter
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: Counter
         INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: Connect to your Etekcity food scale to enter ingredient weights automatically.
         INFOPLIST_KEY_NSCameraUsageDescription: Scan packaged food barcodes.
