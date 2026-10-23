@@ -1,4 +1,4 @@
-const CACHE = "still-shell-v1";
+const CACHE = "counter-shell-v2";
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {
@@ -32,7 +32,7 @@ self.addEventListener("fetch", (event) => {
     return;
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: "no-store" })
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();

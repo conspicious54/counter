@@ -28,6 +28,7 @@ import { Unlock } from "@/components/unlock";
 import { FoodSheet } from "@/components/food-sheet";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { watchAppUpdates } from "@/lib/app-updates";
 const labels = { calories: "Calories", protein: "Protein", carbs: "Carbs", fat: "Fat" };
 export default function Home() {
   const [data, setData] = useState<Data | null>(null);
@@ -70,6 +71,7 @@ export default function Home() {
     window.addEventListener("online", refresh);
     window.addEventListener("offline", refresh);
     document.addEventListener("visibilitychange", refresh);
+    const stopUpdates = watchAppUpdates();
     const timer = setInterval(() => setToday(localDay()), 30000);
     fetch("/api/config")
       .then((r) => r.json())
@@ -77,9 +79,11 @@ export default function Home() {
       .catch(() => {});
     const savedTheme = localStorage.getItem("still.theme") || "system";
     setTheme(savedTheme);
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+    if ("serviceWorker" in navigator)
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {});
     return () => {
       clean();
+      stopUpdates();
       clearInterval(timer);
       window.removeEventListener("online", refresh);
       window.removeEventListener("offline", refresh);

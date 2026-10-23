@@ -1769,18 +1769,22 @@ h1 {
   margin: 6px 0 10px;
 }
 
+.scanner-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
 .scanner-torch {
-  position: absolute;
-  top: 12px;
-  right: 12px;
   display: flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid #ffffff55;
+  border: 1px solid var(--line);
   border-radius: 20px;
   padding: 9px 12px;
-  color: white;
-  background: #0009;
+  color: var(--fg);
+  background: var(--soft);
   font-size: 12px;
   min-height: 44px;
 }

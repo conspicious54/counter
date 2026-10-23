@@ -81,44 +81,49 @@ export function Scanner({ onCode }: { onCode: (code: string) => void }) {
     };
   }, [onCode]);
   return (
-    <div className="scanner">
-      <video ref={video} autoPlay playsInline muted />
-      <div className="scan-frame">
-        <ScanLine size={34} />
+    <div className="scanner-wrap">
+      <div className="scanner-toolbar">
+        <strong>Scan barcode</strong>
+        <button
+          type="button"
+          className="scanner-torch"
+          aria-label={torch ? "Turn flashlight off" : "Turn flashlight on"}
+          aria-pressed={torch}
+          disabled={!torchAvailable || torchBusy}
+          title={torchAvailable ? "Camera flashlight" : "Flashlight unavailable on this camera"}
+          onClick={async () => {
+            const controls = controlsRef.current;
+            if (!controls?.switchTorch) return;
+            setTorchBusy(true);
+            setTorchError("");
+            try {
+              await controls.switchTorch(!torch);
+              if (
+                active.current &&
+                controlsRef.current === controls &&
+                document.visibilityState === "visible"
+              )
+                setTorch(!torch);
+              else await controls.switchTorch(false);
+            } catch {
+              if (active.current && controlsRef.current === controls)
+                setTorchError("Flashlight unavailable. Try moving to better light.");
+            } finally {
+              if (active.current && controlsRef.current === controls) setTorchBusy(false);
+            }
+          }}
+        >
+          {torch ? <FlashlightOff size={17} /> : <Flashlight size={17} />}{" "}
+          {torch ? "Flash on" : "Flash"}
+        </button>
       </div>
-      <button
-        type="button"
-        className="scanner-torch"
-        aria-label={torch ? "Turn flashlight off" : "Turn flashlight on"}
-        aria-pressed={torch}
-        disabled={!torchAvailable || torchBusy}
-        title={torchAvailable ? "Camera flashlight" : "Flashlight unavailable on this camera"}
-        onClick={async () => {
-          const controls = controlsRef.current;
-          if (!controls?.switchTorch) return;
-          setTorchBusy(true);
-          setTorchError("");
-          try {
-            await controls.switchTorch(!torch);
-            if (
-              active.current &&
-              controlsRef.current === controls &&
-              document.visibilityState === "visible"
-            )
-              setTorch(!torch);
-            else await controls.switchTorch(false);
-          } catch {
-            if (active.current && controlsRef.current === controls)
-              setTorchError("Flashlight unavailable. Try moving to better light.");
-          } finally {
-            if (active.current && controlsRef.current === controls) setTorchBusy(false);
-          }
-        }}
-      >
-        {torch ? <FlashlightOff size={17} /> : <Flashlight size={17} />}{" "}
-        {torch ? "Flash on" : "Flash"}
-      </button>
-      <span>{error || torchError || "Hold the barcode inside the frame"}</span>
+      <div className="scanner">
+        <video ref={video} autoPlay playsInline muted />
+        <div className="scan-frame">
+          <ScanLine size={34} />
+        </div>
+        <span>{error || torchError || "Hold the barcode inside the frame"}</span>
+      </div>
     </div>
   );
 }
