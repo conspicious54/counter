@@ -4,7 +4,22 @@ import CoreBluetooth
 
 @main
 struct CounterApp: App {
-    var body: some Scene { WindowGroup { CounterWebView().ignoresSafeArea(edges: .bottom) } }
+    @UIApplicationDelegateAdaptor(CounterAppDelegate.self) var appDelegate
+    var body: some Scene { WindowGroup { CounterRootView() } }
+}
+final class CounterAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        let restoring = (launchOptions?[.bluetoothCentrals] as? [String])?.contains(BodyScaleManager.restorationID) == true
+        BodyScaleManager.shared.start(restoring: restoring)
+        return true
+    }
+}
+struct CounterRootView: View {
+    @ObservedObject private var bodyScale = BodyScaleManager.shared
+    var body: some View {
+        CounterWebView().ignoresSafeArea(edges: .bottom)
+            .sheet(isPresented: $bodyScale.presentSheet) { BodyScaleView() }
+    }
 }
 
 struct CounterWebView: UIViewRepresentable {
@@ -14,6 +29,7 @@ struct CounterWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.userContentController.add(context.coordinator, name: "counterScale")
+        config.userContentController.add(context.coordinator, name: "counterBody")
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         context.coordinator.web = web
@@ -38,6 +54,7 @@ struct CounterWebView: UIViewRepresentable {
     static func dismantleUIView(_ web: WKWebView, coordinator: ScaleBridge) {
         coordinator.disconnect()
         web.configuration.userContentController.removeScriptMessageHandler(forName: "counterScale")
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "counterBody")
     }
 }
 
@@ -52,6 +69,7 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
     private let notify = CBUUID(string: "FFF1")
     override init() {
         super.init()
+        BodyScaleManager.shared.onChange = { [weak self] in self?.pushBodySnapshot() }
         NotificationCenter.default.addObserver(self, selector: #selector(background), name: UIApplication.didEnterBackgroundNotification, object: nil)
     }
     deinit { NotificationCenter.default.removeObserver(self) }
@@ -61,6 +79,11 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
               message.frameInfo.securityOrigin.protocol == "https",
               message.frameInfo.securityOrigin.host == CounterWebView.appURL.host,
               let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
+        if message.name == "counterBody" {
+            if action == "show" { BodyScaleManager.shared.presentSheet = true }
+            if action == "sync" { pushBodySnapshot() }
+            return
+        }
         if action == "disconnect" { disconnect() }
         if action == "connect" {
             disconnect()
@@ -69,6 +92,14 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
             else { startIfReady() }
         }
     }
+    func pushBodySnapshot() {
+        guard UIApplication.shared.applicationState == .active,
+              let web = web, web.url?.scheme == "https", web.url?.host == CounterWebView.appURL.host,
+              let json = try? JSONSerialization.data(withJSONObject: BodyScaleManager.shared.snapshot()),
+              let text = String(data: json, encoding: .utf8) else { return }
+        web.evaluateJavaScript("window.dispatchEvent(new CustomEvent('counter-body',{detail:\(text)}));", completionHandler: nil)
+    }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { pushBodySnapshot() }
     private func send(_ detail: [String: Any]) {
         guard let web = web, web.url?.host == CounterWebView.appURL.host,
               let json = try? JSONSerialization.data(withJSONObject: detail),

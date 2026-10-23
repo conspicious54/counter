@@ -1726,3 +1726,38 @@ h1 {
   font-size: 10px;
   color: var(--muted);
 }
+
+.body-weight-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 20px;
+}
+.body-weight-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.body-weight-card strong {
+  font-size: 13px;
+}
+.body-weight-card time,
+.body-weight-card small {
+  font-size: 12px;
+  opacity: 0.65;
+}
+.body-weight-value {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+}
+.body-weight-value > span {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.65;
+  letter-spacing: 0;
+}

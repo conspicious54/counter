@@ -22,6 +22,8 @@ import {
 import type { Data, Entry, Food, Item, Nutrients, Recipe, Targets, Unit } from "@/lib/types";
 import { commit, load, subscribe, sync } from "@/lib/store";
 import { dailyTotals, fmt, keys, localDay, scale, supportedUnits, totals } from "@/lib/nutrition";
+import { BodyWeightPanel, BodyScaleSettings } from "@/components/body-weight";
+import { readBodyWeights } from "@/lib/body-weight";
 import { Unlock } from "@/components/unlock";
 import { FoodSheet } from "@/components/food-sheet";
 import { Button } from "@/components/ui/button";
@@ -196,7 +198,9 @@ export default function Home() {
   }
   function exportData() {
     if (!data) return;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ ...data, bodyWeights: readBodyWeights() }, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -318,6 +322,7 @@ export default function Home() {
             </p>
           )}
         </section>
+        <BodyWeightPanel day={tab === "history" ? selected : undefined} />
         <section className="food-section">
           <div className="section-title">
             <h2>
@@ -604,6 +609,7 @@ export default function Home() {
             ))}
           </div>
           <Button className="wide">Save preferences</Button>
+          <BodyScaleSettings />
           <div className="settings-storage">
             <h3>Your data</h3>
             <p className="muted">

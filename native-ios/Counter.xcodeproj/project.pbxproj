@@ -8,10 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		1CE5A3969FE3A48FEAFE8F00 /* CounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF4C6FC89ED01E0E1B0C613 /* CounterApp.swift */; };
+		35BDB3E7EAC9AEC036D27B1A /* BodyWeightLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */; };
+		434EAE9E9028D14ECE43A37C /* etekcity_esf551_ble.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6BB7E88F3BD147DFFE7E5C70 /* etekcity_esf551_ble.txt */; };
+		5179101F77F4A59066494168 /* BodyScaleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyScaleManager.swift; sourceTree = "<group>"; };
 		3E7543F952F244029818C28B /* Counter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Counter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyWeightLedger.swift; sourceTree = "<group>"; };
+		6BB7E88F3BD147DFFE7E5C70 /* etekcity_esf551_ble.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = etekcity_esf551_ble.txt; sourceTree = "<group>"; };
 		CEF4C6FC89ED01E0E1B0C613 /* CounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -27,7 +33,10 @@
 		3EA1AA03629EA5FE862D3FE5 /* Counter */ = {
 			isa = PBXGroup;
 			children = (
+				14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */,
+				5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */,
 				CEF4C6FC89ED01E0E1B0C613 /* CounterApp.swift */,
+				D98808808F85D19DB85B4046 /* Licenses */,
 			);
 			path = Counter;
 			sourceTree = "<group>";
@@ -40,6 +49,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		D98808808F85D19DB85B4046 /* Licenses */ = {
+			isa = PBXGroup;
+			children = (
+				6BB7E88F3BD147DFFE7E5C70 /* etekcity_esf551_ble.txt */,
+			);
+			path = Licenses;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -48,6 +65,7 @@
 			buildConfigurationList = 1B5CC04FC4480969CED4E9D4 /* Build configuration list for PBXNativeTarget "Counter" */;
 			buildPhases = (
 				6CC34089D4A3F6D379859FF0 /* Sources */,
+				D7980CAFCCD20C90627254A8 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -93,11 +111,24 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		D7980CAFCCD20C90627254A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				434EAE9E9028D14ECE43A37C /* etekcity_esf551_ble.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		6CC34089D4A3F6D379859FF0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5179101F77F4A59066494168 /* BodyScaleManager.swift in Sources */,
+				35BDB3E7EAC9AEC036D27B1A /* BodyWeightLedger.swift in Sources */,
 				1CE5A3969FE3A48FEAFE8F00 /* CounterApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -113,7 +144,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Counter;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your Etekcity food scale to enter ingredient weights automatically.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your Etekcity food and bathroom scales to save food grams and body weigh-ins separately.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan packaged food barcodes.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record food descriptions for transcription.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -203,7 +234,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Counter;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your Etekcity food scale to enter ingredient weights automatically.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your Etekcity food and bathroom scales to save food grams and body weigh-ins separately.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan packaged food barcodes.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record food descriptions for transcription.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

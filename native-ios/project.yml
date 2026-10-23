@@ -21,7 +21,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: Counter
-        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: Connect to your Etekcity food scale to enter ingredient weights automatically.
+        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: Connect to your Etekcity food and bathroom scales to save food grams and body weigh-ins separately.
         INFOPLIST_KEY_NSCameraUsageDescription: Scan packaged food barcodes.
         INFOPLIST_KEY_NSMicrophoneUsageDescription: Record food descriptions for transcription.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
