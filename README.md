@@ -53,7 +53,7 @@ Before opening to a broad public audience, configure Supabase anonymous-sign-in 
 
 - **Speak:** Add Food opens the microphone automatically (subject to device permission); a natural pause finishes the recording. Manual stop remains available. Server-side transcription feeds the same parsing/matching pipeline as Type. Recordings cap at 60 seconds and stay available for playback/retry after a transcription failure. AI transcription is explicitly unavailable without its key.
 - **Scan:** choosing Scan immediately requests the rear camera and starts ZXing decoding of UPC-A, UPC-E, EAN-8, or EAN-13. Tracks stop when scanning succeeds, the method changes, or the sheet closes. A typed barcode fallback is available. Open Food Facts is first, USDA exact GTIN verification is second. A missing product can be entered from its label and cached locally.
-- **Type:** multi-food structured extraction, optional one-question clarification, source-backed food candidates, quantity editing, alternative search, and one Add All confirmation. The LLM never returns nutritional values.
+- **Type:** multi-food structured extraction, optional one-question clarification, source-backed food candidates, quantity editing, alternative search, and one Add All confirmation. The parsing model never returns nutrition values; a separate, clearly labeled AI estimate is used automatically when no matching food record is found.
 - **Memory:** cached food matches are ranked using prior logging frequency, brand and preparation. Recipes can be saved from a confirmation or a previously logged meal. Type or say a saved recipe's name, optionally with modifications. Modified ingredients do not change the saved recipe.
 - **Today/History:** totals recalculate after quantity edits or deletes. History includes a date picker, date navigation, and food/meal copy to today. Logging timestamps are UTC; each entry also stores its original local calendar day so travelling does not silently move prior meals between days.
 - **Unknown nutrients:** rendered as `—`; a total is marked unknown if any included record is missing that nutrient. True zero stays zero.
@@ -118,3 +118,14 @@ Hardware evidence: physical scale discovery, FFF0/FFF1 subscription and stable 2
 ## Voice verification
 
 OpenAI transcription and structured parsing verified with real API requests. Personal access uses signed expiring cookies; credentials stay server-side. Native Etekcity weighing was verified on the physical iPhone. Selecting Weigh connects automatically in Counter and arms fresh stable gram readings on connection. Tap Use weight, then confirm the food once.
+
+
+## Restaurant / unknown-food fallback
+
+Food matching tries saved database/custom foods, then USDA generic/branded search. An empty match automatically calls the authenticated `/api/estimate` route with `gpt-4.1-mini` (optional `OPENAI_ESTIMATE_MODEL` override). API outages remain visible errors rather than pretending the database had no result. An existing exact AI estimate can be reused offline. When online, matching database records take priority over saved AI estimates.
+
+Estimates are visibly labeled **AI estimate** in confirmation, Today/History, and editing. Assumptions, model, reference portion and generation time persist with the food. Restaurant dish customizations stay in one food description; unspecified restaurant quantities use one standard menu portion. Estimates are approximate model knowledge, not live-verified or official menu facts. No web-search tool fee is incurred.
+
+Cost controls: a 500-output-token cap per estimate, no estimate call for database hits, a bounded seven-day in-process cache with in-flight deduplication, and persistent reuse of confirmed foods on the device. The in-process cache may reset across serverless instances/redeploys; device food memory is the durable cache. New estimates need connectivity. The existing personal/Supabase authentication and API throttle protect the paid endpoint.
+
+Reference quantities are 100 g, 100 ml, or one stated serving/piece/cup/etc. Only known mass units convert to grams. A serving-only estimate never manufactures a serving-to-gram conversion. Missing nutrients stay null, and totals preserve that unknown state. Tests cover automatic fallback, real-food priority, exact cached reuse, restaurant/portion separation, nutrient scaling, missing nutrients, invalid outputs and database outages.

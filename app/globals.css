@@ -1761,3 +1761,10 @@ h1 {
   opacity: 0.65;
   letter-spacing: 0;
 }
+
+.estimate-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-foreground, #777);
+  margin: 6px 0 10px;
+}

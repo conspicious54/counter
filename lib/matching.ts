@@ -18,7 +18,11 @@ export function compatible(food: Food, p: Parsed) {
   const tokens = foodTokens(p.name);
   const actual = foodTokens(title);
   if (!tokens.length || !tokens.every((w) => actual.includes(w))) return false;
-  if (p.brand && !title.includes(p.brand.toLowerCase())) return false;
+  const brandKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (p.brand && !brandKey(title).includes(brandKey(p.brand))) return false;
+  const requestedSize = p.name.toLowerCase().match(/\b(small|medium|large)\b/)?.[1];
+  const actualSize = title.match(/\b(small|medium|large)\b/)?.[1];
+  if (requestedSize && actualSize && requestedSize !== actualSize) return false;
   const preparation = p.preparation?.toLowerCase();
   if (preparation && !`${title} ${food.preparation || ""}`.includes(preparation)) return false;
   return true;
@@ -47,6 +51,8 @@ export function matchScore(food: Food, p: Parsed, entries: Entry[] = []) {
 }
 export function rankFoods(foods: Food[], p: Parsed, entries: Entry[] = []) {
   return [...new Map(foods.filter((f) => compatible(f, p)).map((f) => [f.id, f])).values()].sort(
-    (a, b) => matchScore(b, p, entries) - matchScore(a, p, entries),
+    (a, b) =>
+      Number(a.source === "AI estimate") - Number(b.source === "AI estimate") ||
+      matchScore(b, p, entries) - matchScore(a, p, entries),
   );
 }

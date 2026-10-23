@@ -19,7 +19,14 @@ export type Food = {
   id: string;
   name: string;
   brand?: string;
-  source: "USDA" | "Open Food Facts" | "Custom" | "Demo";
+  source: "USDA" | "Open Food Facts" | "Custom" | "Demo" | "AI estimate";
+  estimate?: {
+    model: string;
+    inputKey: string;
+    assumptions: string;
+    referenceLabel: string;
+    createdAt: string;
+  };
   barcode?: string;
   basis: { quantity: number; unit: "g" | "ml" | "serving" };
   nutrients: Nutrients;

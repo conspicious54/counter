@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         {
           role: "system",
           content:
-            "Extract foods only, never nutrition values. Preserve brand and raw/cooked preparation. Normalize units to enum. Eggs and countable fruit use piece. Select recipeName only from supplied saved recipe names; then foods are ONLY modifications (add another egg means add 1 egg; used two instead of one means set 2). Without recipeName foods are the whole meal. Ask ONE short clarification only when necessary, e.g. missing quantity or important raw/cooked ambiguity. Do not invent amounts. Recipe names: " +
+            "Extract foods only, never nutrition values. Preserve brand and raw/cooked preparation. Preserve restaurant names as brand and preserve item size, sauces, fillings, exclusions and customizations in name. A prepared restaurant dish with fillings or exclusions is ONE food (e.g. chicken burrito with black beans, queso, no rice), not a list of its ingredients. Only split out sides when the user explicitly describes a separate side/item. For ordinary food logging all actions are add; preserve no/without exclusions in the food name. Use remove/set actions ONLY when modifying a saved recipe, and use quantity 1 for remove because quantity is ignored. All quantities must be greater than zero. Normalize units to enum. Eggs and countable fruit use piece. Select recipeName only from supplied saved recipe names; then foods are ONLY modifications (add another egg means add 1 egg; used two instead of one means set 2). Without recipeName foods are the whole meal. Ask ONE short clarification only when the food cannot be identified or an important preparation difference cannot be resolved. Preserve explicit quantities. If no quantity was supplied for a restaurant item or prepared dish, use 1 serving (one standard menu portion); for a plain generic food use 100 g as the visible starting amount for weighing. Do not ask for quantity just to block logging. Recipe names: " +
             JSON.stringify(input.recipeNames),
         },
         { role: "user", content: input.text },
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
                   properties: {
                     name: { type: "string" },
                     brand: { type: ["string", "null"] },
-                    quantity: { type: "number" },
+                    quantity: { type: "number", exclusiveMinimum: 0 },
                     unit: {
                       type: "string",
                       enum: [

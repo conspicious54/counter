@@ -17,6 +17,7 @@ import type { Candidate, Data, Food, Item, Parsed, Recipe, Unit } from "@/lib/ty
 import { fmt, modifyRecipe, scale, supportedUnits, totals } from "@/lib/nutrition";
 import { request } from "@/lib/store";
 import { rankFoods, compatible, matchScore } from "@/lib/matching";
+import { lookupFood } from "@/lib/food-lookup";
 import { simpleParse } from "@/lib/simple-parse";
 import {
   loadMealDraft,
@@ -137,53 +138,35 @@ export function FoodSheet({
     )
     .slice(0, 5);
   async function lookup(p: Parsed) {
-    const local = data.foods.filter((f) => f.source !== "Demo");
-    let foods = rankFoods(local, p, data.entries);
-    const remembered = foods[0];
-    if (remembered) {
-      try {
-        scale({ food: remembered, quantity: p.quantity, unit: p.unit });
-        return { food: remembered, quantity: p.quantity, unit: p.unit, alternatives: foods };
-      } catch {}
-    }
-    if (config.usda && navigator.onLine) {
-      try {
-        const result = await request(
-          "/api/search?q=" +
-            encodeURIComponent([p.brand, p.name, p.preparation].filter(Boolean).join(" ")) +
-            (p.brand ? "&branded=1" : ""),
-        );
-        foods = [...foods, ...result.foods];
-      } catch (e) {
-        if (!foods.length) throw e;
-      }
-    }
-    if (config.usda && navigator.onLine && !rankFoods(foods, p, data.entries).length && !p.brand) {
-      const fallback = await request("/api/search?branded=1&q=" + encodeURIComponent(p.name));
-      foods = [...foods, ...fallback.foods];
-    }
-    const unique = rankFoods(foods, p, data.entries);
-    if (!unique.length)
-      throw new Error(
-        `No database match for “${p.name}”. Try a clearer name or enter the label manually.`,
-      );
-    const food = unique[0];
-    const candidate: Candidate = { food, quantity: p.quantity, unit: p.unit, alternatives: unique };
-    try {
-      scale(candidate);
-    } catch (e) {
-      candidate.warning = (e as Error).message;
-    }
-    if (
-      p.brand &&
-      !`${food.brand || ""} ${food.name}`.toLowerCase().includes(p.brand.toLowerCase())
-    )
-      candidate.warning = "Select the exact brand before logging.";
-    return candidate;
+    return lookupFood(p, {
+      foods: data.foods,
+      entries: data.entries,
+      online: navigator.onLine,
+      database: config.usda,
+      search: async (query, branded) =>
+        (
+          await request(
+            "/api/search?q=" + encodeURIComponent(query) + (branded ? "&branded=1" : ""),
+          )
+        ).foods,
+      ...(config.ai
+        ? {
+            estimate: async (food: Parsed) =>
+              (
+                await request("/api/estimate", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(food),
+                })
+              ).food,
+          }
+        : {}),
+    });
   }
   async function parse(value = text) {
     if (!value.trim()) return;
     if (
+      !config.ai &&
       !data.recipes.some((r) => value.toLowerCase().includes(r.name.toLowerCase())) &&
       !/\d|\b(and|but|instead|without)\b/i.test(value) &&
       value.trim().split(/\s+/).length <= 6
@@ -374,12 +357,7 @@ export function FoodSheet({
         }
       }
       setFoodResults(foods);
-      if (!foods.length)
-        throw new Error(
-          config.usda
-            ? "No exact food found. Try its generic name or enter its label."
-            : "Food search is unavailable. Enter a nutrition label or choose a saved food.",
-        );
+      if (!foods.length) await parse(query);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -524,7 +502,7 @@ export function FoodSheet({
               <div className="input-footer">
                 <span>
                   {config.ai
-                    ? "Natural language. Real nutrition data."
+                    ? "Database first. AI estimate if needed."
                     : config.usda
                       ? "USDA lookup · simple entries need no AI"
                       : "Saved foods · nutrition label entry"}
@@ -724,9 +702,16 @@ export function FoodSheet({
                   ) : (
                     c.food.source
                   )}{" "}
-                  · per {c.food.basis.quantity} {c.food.basis.unit}
+                  · per{" "}
+                  {c.food.estimate?.referenceLabel ||
+                    `${c.food.basis.quantity} ${c.food.basis.unit}`}
                   {c.food.source === "Demo" ? " · SAMPLE NUTRITION" : ""}
                 </small>
+                {c.food.estimate && (
+                  <p className="estimate-note">
+                    Approximate macros · {c.food.estimate.assumptions}
+                  </p>
+                )}
                 <div className="quantity-line">
                   <input
                     aria-label={"Quantity for " + c.food.name}

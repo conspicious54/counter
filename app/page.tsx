@@ -407,7 +407,11 @@ export default function Home() {
                           <span>
                             {fmt(e.quantity, 2)} {e.unit}
                             {e.food.brand ? ` · ${e.food.brand}` : ""}
-                            {e.food.source === "Demo" ? " · Demo" : ""}
+                            {e.food.source === "AI estimate"
+                              ? " · AI estimate"
+                              : e.food.source === "Demo"
+                                ? " · Demo"
+                                : ""}
                           </span>
                           <small>
                             <b>{fmt(n.protein, 1)}</b> P <i>·</i> <b>{fmt(n.carbs, 1)}</b> C{" "}
@@ -490,8 +494,12 @@ export default function Home() {
         {edit && (
           <div className="edit-panel">
             <p className="food-source">
-              {edit.food.brand || edit.food.source} · values per {edit.food.basis.quantity}{" "}
-              {edit.food.basis.unit}
+              {edit.food.source === "AI estimate"
+                ? "AI estimate"
+                : edit.food.brand || edit.food.source}{" "}
+              · values per{" "}
+              {edit.food.estimate?.referenceLabel ||
+                `${edit.food.basis.quantity} ${edit.food.basis.unit}`}
             </p>
             <div className="field-pair">
               <label>
