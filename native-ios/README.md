@@ -19,5 +19,5 @@ An Apple developer identity/signing is required to install on physical iPhone. U
 - Physical ENS-C551S-SUS discovery, connection, FFF0/FFF1 notification subscription, checksum and stable 25.0 g packets were verified from a nearby Mac on October 22, 2026.
 - Decoder checks packet identity, length, checksum, gram mode, media, stable status, positive quantity, capacity, freshness, and post-selection time.
 - Ounces/mL modes are rejected rather than treated as grams. Tare is physical; remote tare is not implemented.
-- Browser transport works in Web Bluetooth-capable browsers; native bridge is for iPhone. Physical iPhone signing/install and end-to-end auto-entry still need device verification.
+- Browser transport works in Web Bluetooth-capable browsers; native bridge is for iPhone. Signed build, installation, and launch on the paired physical iPhone succeeded on October 22, 2026. User confirmation of end-to-end automatic ingredient entry is still pending.
 - The bridge disconnects in the background and when the food scale panel unmounts. It never logs a meal by itself.
