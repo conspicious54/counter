@@ -17,6 +17,7 @@ targets:
     sources: [Counter]
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: com.connorbyers.counter
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Info.plist

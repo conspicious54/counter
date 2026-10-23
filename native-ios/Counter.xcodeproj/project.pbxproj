@@ -11,10 +11,12 @@
 		35BDB3E7EAC9AEC036D27B1A /* BodyWeightLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */; };
 		434EAE9E9028D14ECE43A37C /* etekcity_esf551_ble.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6BB7E88F3BD147DFFE7E5C70 /* etekcity_esf551_ble.txt */; };
 		5179101F77F4A59066494168 /* BodyScaleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */; };
+		CFCA8DE84F2226FDA53F77CD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3405526E53A2C1884EB6BE9E /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyScaleManager.swift; sourceTree = "<group>"; };
+		3405526E53A2C1884EB6BE9E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3E7543F952F244029818C28B /* Counter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Counter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyWeightLedger.swift; sourceTree = "<group>"; };
 		6BB7E88F3BD147DFFE7E5C70 /* etekcity_esf551_ble.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = etekcity_esf551_ble.txt; sourceTree = "<group>"; };
@@ -33,6 +35,7 @@
 		3EA1AA03629EA5FE862D3FE5 /* Counter */ = {
 			isa = PBXGroup;
 			children = (
+				3405526E53A2C1884EB6BE9E /* Assets.xcassets */,
 				14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */,
 				5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */,
 				CEF4C6FC89ED01E0E1B0C613 /* CounterApp.swift */,
@@ -116,6 +119,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CFCA8DE84F2226FDA53F77CD /* Assets.xcassets in Resources */,
 				434EAE9E9028D14ECE43A37C /* etekcity_esf551_ble.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

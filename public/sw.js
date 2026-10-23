@@ -1,8 +1,8 @@
-const CACHE = "counter-shell-v2";
+const CACHE = "counter-shell-v3";
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {
-      await cache.addAll(["/", "/icon.svg", "/manifest.webmanifest"]);
+      await cache.addAll(["/", "/counter-icon.svg", "/manifest.webmanifest"]);
       const response = await cache.match("/");
       const html = await response.text();
       const assets = [
