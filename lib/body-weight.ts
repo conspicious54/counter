@@ -34,7 +34,16 @@ export function readBodyWeights(): BodyWeight[] {
 }
 export function storeBodyWeights(incoming: unknown[]): BodyWeight[] {
   // Read/merge/write before publishing. Native retains its ledger and replays it on every app resume.
-  const next = mergeBodyWeights(readBodyWeights(), incoming);
+  let existing: BodyWeight[];
+  try {
+    existing = readBodyWeights();
+  } catch {
+    // A full native replay can repair a corrupt web cache without discarding its original bytes.
+    const raw = localStorage.getItem(BODY_WEIGHT_KEY);
+    if (raw) localStorage.setItem(BODY_WEIGHT_KEY + ".recovery", raw);
+    existing = [];
+  }
+  const next = mergeBodyWeights(existing, incoming);
   localStorage.setItem(BODY_WEIGHT_KEY, JSON.stringify(next));
   return next;
 }

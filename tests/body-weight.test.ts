@@ -44,4 +44,6 @@ test("web body-weight cache replays idempotently and never publishes success aft
   assert.equal(storeBodyWeights([{ ...example, id: "native-2" }]).length, 2);
   disk.set(BODY_WEIGHT_KEY, "broken");
   assert.throws(() => readBodyWeights());
+  assert.deepEqual(storeBodyWeights([example]), [example]);
+  assert.equal(disk.get(BODY_WEIGHT_KEY + ".recovery"), "broken");
 });

@@ -56,7 +56,7 @@ final class BodyScaleManager: NSObject, ObservableObject, CBCentralManagerDelega
         enabled = ledger.state.reconnect
         onChange?()
     }
-    private func setStatus(_ value: String) { status = value; onChange?() }
+    private func setStatus(_ value: String) { guard status != value else { return }; status = value; onChange?() }
     private func persist(_ change: (inout BodyScaleState) -> Void) -> Bool {
         do { try ledger?.update(change); storageError = nil; refresh(); return ledger != nil }
         catch { storageError = "Could not save body-weight data. Free device storage; keep Counter open to retry."; onChange?(); return false }
