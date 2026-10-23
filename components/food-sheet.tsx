@@ -30,6 +30,7 @@ import { Button } from "./ui/button";
 import { Sheet } from "./ui/sheet";
 import { Scanner } from "./scanner";
 import { Voice } from "./voice";
+import { ScaleControl } from "./scale-control";
 type Config = { ai: boolean; usda: boolean; sync: boolean };
 export function FoodSheet({
   open,
@@ -69,6 +70,7 @@ export function FoodSheet({
   const [foodQuery, setFoodQuery] = useState("");
   const [foodResults, setFoodResults] = useState<Food[]>([]);
   const [recipeOnly, setRecipeOnly] = useState(false);
+  const [weighing, setWeighing] = useState<number | null>(null);
   function receive(items: Candidate[]) {
     setCandidates((previous) => (addingIngredient ? appendIngredients(previous, items) : items));
     setAddingIngredient(false);
@@ -76,6 +78,7 @@ export function FoodSheet({
     setError("");
   }
   function addIngredient() {
+    setWeighing(null);
     setAddingIngredient(true);
     setText("");
     setFoodQuery("");
@@ -99,6 +102,7 @@ export function FoodSheet({
         return;
       }
       setAddingIngredient(false);
+      setWeighing(null);
       setDraftLoaded(true);
       setSavedSearch("");
       setFoodQuery("");
@@ -690,7 +694,10 @@ export function FoodSheet({
                   <button
                     className="icon-button"
                     aria-label={"Remove " + c.food.name}
-                    onClick={() => setCandidates(candidates.filter((_, idx) => idx !== i))}
+                    onClick={() => {
+                      setWeighing(null);
+                      setCandidates(candidates.filter((_, idx) => idx !== i));
+                    }}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -760,6 +767,30 @@ export function FoodSheet({
                     {fmt(n.protein, 1)}g protein <span>·</span> {fmt(n.carbs, 1)}g carbs{" "}
                     <span>·</span> {fmt(n.fat, 1)}g fat
                   </p>
+                )}
+                {c.food.basis.unit === "g" && (
+                  <button
+                    className="text-button weigh-button"
+                    onClick={() => setWeighing(weighing === i ? null : i)}
+                  >
+                    {weighing === i ? "Close scale" : "Weigh with scale"}
+                  </button>
+                )}
+                {weighing === i && (
+                  <ScaleControl
+                    key={c.food.id + "-" + i}
+                    foodName={c.food.name}
+                    onFinish={() => setWeighing(null)}
+                    onWeight={(grams) =>
+                      setCandidates((previous) =>
+                        previous.map((item, index) =>
+                          index === i
+                            ? { ...item, quantity: grams, unit: "g", warning: undefined }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
                 )}
                 {warning && <p className="error">{warning}</p>}
                 {editing === i && (
@@ -853,7 +884,11 @@ export function FoodSheet({
               Save meal only, without logging today
             </label>
           )}
-          <Button className="wide" disabled={invalid || busy} onClick={confirm}>
+          <Button
+            className="wide"
+            disabled={invalid || busy || weighing !== null}
+            onClick={confirm}
+          >
             <Plus size={18} />
             {recipeOnly && saveRecipe
               ? "Save meal"

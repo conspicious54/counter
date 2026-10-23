@@ -7,7 +7,7 @@ A mobile-first, installable calorie and macro logger built with Next.js App Rout
 Requires Node.js 22+.
 
 ```sh
-cd counter
+cd macro-tracker
 npm install
 cp .env.example .env.local
 npm run dev
@@ -72,7 +72,7 @@ npm run build
 npm start
 ```
 
-All 21 automated tests pass. Tests cover local save durability/failed-write rollback, nutrient scaling, verified serving/piece conversions, rejected density assumptions, unknown nutrients, ounces, local date boundaries and DST, nonmutating recipe add/set/remove operations, and totals after edits/deletions. Browser checks cover demo multi-food confirmation, recalculation after editing, recipe saving/modification, persistence across reload, History, manual custom-food entry and mobile/light/dark layouts.
+All 26 automated tests pass. Tests cover local save durability/failed-write rollback, nutrient scaling, verified serving/piece conversions, rejected density assumptions, unknown nutrients, ounces, local date boundaries and DST, nonmutating recipe add/set/remove operations, and totals after edits/deletions. Browser checks cover demo multi-food confirmation, recalculation after editing, recipe saving/modification, persistence across reload, History, manual custom-food entry and mobile/light/dark layouts.
 
 The production build and TypeScript checks pass. Offline reopening and offline edits surviving reload were verified in the browser. A live Open Food Facts lookup for UPC/EAN `3017620422003` returned Nutella with a 100 g nutrition basis.
 
@@ -93,28 +93,27 @@ Integration references: [OpenAI structured outputs](https://developers.openai.co
 
 ## Ingredient-by-ingredient meals and lookup cost
 
-In Add food, search a food name or type a measured ingredient such as `150 g blueberries`. Review the record and quantity, then choose **Add another ingredient**. Previous ingredients remain in the meal; calories and all three macros update as quantities change. The draft is saved on this device and resumes after closing/reloading. Select **Save as a reusable meal**, name it, and either save/log today or choose **Save meal only**. Saved meals have a searchable list; saving meals also caches their ingredient records. Duplicate names are rejected so a recipe is not silently overwritten. A saved recipe can be logged and modified without changing its original ingredients. Each weight is entered manually until a real scale connection is implemented and tested; no decorative Bluetooth controls are included.
+In Add food, search a food name or type a measured ingredient such as `150 g blueberries`. Review the record and quantity, then choose **Add another ingredient**. Previous ingredients remain in the meal; calories and all three macros update as quantities change. The draft is saved on this device and resumes after closing/reloading. Select **Save as a reusable meal**, name it, and either save/log today or choose **Save meal only**. Saved meals have a searchable list; saving meals also caches their ingredient records. Duplicate names are rejected so a recipe is not silently overwritten. A saved recipe can be logged and modified without changing its original ingredients. Gram-based ingredients now include Weigh with scale. The ENS-C551S-SUS decoder was verified against physical 25.0 g readings on a Mac; physical iPhone end-to-end verification is pending. See native-ios/README.md.
 
 Food-name search, barcode lookup, cached foods, saved meals and simple numeric descriptions do not use OpenAI. `lib/simple-parse.ts` handles explicit quantities and units deterministically; complex prose falls through to the structured AI parser. USDA search defaults to generic Foundation/SR Legacy/FNDDS records; branded search is available when a brand is supplied or generic search has no compatible match. Food name and preparation must match before repeat-use frequency affects ranking. Generic raw foods rank above unrequested dried/sweetened/processed alternatives. Database record links and reference quantities appear on confirmation cards.
 
 USDA nutrition lookups use the free FoodData Central API (a free data.gov key is still required); the documented default limit is 1,000 requests/hour/IP. USDA search and details request 24-hour Next.js server data caching. Confirmed foods and recipe ingredients remain in the local persistent food cache for repeat use. Open Food Facts is a public barcode data source. Hosting, storage and optional OpenAI usage have separate costs; this app makes no promise of a zero-cost production deployment. No paid nutrition API is required.
 
-**Current unconfigured local preview:** blueberries and the other small built-in sample-food list still use explicitly labeled demo records. A real USDA API key is required to search the full USDA catalog; no missing nutrients are invented. The Bluetooth scale discussion does not mean an actual iPhone/scale connection has been implemented.
+**Current unconfigured local preview:** blueberries and the other small built-in sample-food list still use explicitly labeled demo records. A real USDA API key is required to search the full USDA catalog; no missing nutrients are invented. The native iPhone bridge source and desktop Web Bluetooth transport are implemented; physical iPhone signing/install and end-to-end testing are pending.
 
 ### Budget scale research (October 22, 2026)
 
 RENPHO Calibra / ES-SNG01 is a lower-cost candidate than premium coffee scales. US listings are roughly $20–$30; retail prices and the model shipped must be checked before buying. RENPHO documents its ES-SNG01-W food scale at https://renpho.com/pages/009. An independent ES-SNG01 protocol implementation documents live/stable gram notifications at https://github.com/Eim-make/renpho-ble/blob/main/docs/protocol.md; its remote tare write channel remains untested. This is research evidence, not a supported or hardware-verified integration. Physical tare can still be used. iPhone PWA Bluetooth restrictions remain; a native CoreBluetooth bridge would be needed for our intended seamless iPhone experience.
 
+## Etekcity ENS-C551S-SUS automatic weighing
 
-## Deploy to Netlify
+Select a gram-based ingredient, choose **Weigh with scale**, connect, physically tare an empty plate, and select **Start automatic weight**. Fresh stable positive gram notifications update only that ingredient. **Keep weight & stop tracking** locks it before confirming the meal. Ounce/volume modes, unsupported packets, checksum errors, negative weights, and stale/preselection readings are rejected. No remote tare commands are sent.
 
-Import `conspicious54/counter` from GitHub into Netlify. The repository root is the application root.
+Use Chrome/Edge on desktop with Web Bluetooth, or build the native iPhone shell in `native-ios/Counter.xcodeproj`. Safari's PWA does not expose the bridge and shows an explicit explanation. The native app loads https://dumbcount.netlify.app/ and restricts the bridge to that main-frame HTTPS origin. It disconnects when backgrounded.
 
-- Build command: `npm run build`
-- Publish directory: `.next`
-- Node.js: 22
-- Next.js is detected automatically and deployed with Netlify's OpenNext adapter, including the server API routes. Do not use static export or an SPA catch-all redirect.
-- Add the variables in `.env.example` through Netlify's environment settings, then redeploy. Never commit `.env.local`.
-- Without credentials the published app runs in labeled local/demo mode; barcode lookup is live. Data remains in that browser until Supabase is configured.
+Hardware evidence: physical scale discovery, FFF0/FFF1 subscription and stable 25.0 g capture were verified from a Mac on October 22, 2026. The 16-byte measurement has a modulo-256 byte sum of 255, signed little-endian tenths of grams at bytes 11–12, gram unit code 2 at byte 13, media 0 at byte 14, and stable flag 1 at byte 15. Only this observed layout is accepted. The native unsigned simulator build passes; installation on a physical iPhone requires selecting an Apple development team in Xcode, connecting the device and completing its signing/trust setup. No claim of completed physical iPhone testing is made.
 
-Open the deployed HTTPS address in iPhone Safari, then Share → Add to Home Screen.
+
+## Netlify deployment
+
+The repository root is the Next.js app. Import `conspicious54/counter` into Netlify using build command `npm run build`, publish directory `.next`, and Node 22. The committed `netlify.toml` configures these values. Set server credentials through Netlify environment variables using `.env.example`; never commit `.env.local`. Redeploy after changing credentials. The iPhone shell loads https://dumbcount.netlify.app/.

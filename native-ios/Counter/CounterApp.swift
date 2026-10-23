@@ -1,0 +1,125 @@
+import SwiftUI
+import WebKit
+import CoreBluetooth
+
+@main
+struct CounterApp: App {
+    var body: some Scene { WindowGroup { CounterWebView().ignoresSafeArea(edges: .bottom) } }
+}
+
+struct CounterWebView: UIViewRepresentable {
+    static let appURL = URL(string: "https://dumbcount.netlify.app/")!
+    func makeCoordinator() -> ScaleBridge { ScaleBridge() }
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.userContentController.add(context.coordinator, name: "counterScale")
+        let web = WKWebView(frame: .zero, configuration: config)
+        web.navigationDelegate = context.coordinator
+        context.coordinator.web = web
+        web.load(URLRequest(url: Self.appURL))
+        return web
+    }
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+    static func dismantleUIView(_ web: WKWebView, coordinator: ScaleBridge) {
+        coordinator.disconnect()
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "counterScale")
+    }
+}
+
+// Read-only BLE bridge: no vendor commands, remote tare, or credentials.
+final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate, CBCentralManagerDelegate, CBPeripheralDelegate {
+    weak var web: WKWebView?
+    private var central: CBCentralManager!
+    private var scale: CBPeripheral?
+    private var pendingConnect = false
+    private var timeout: Timer?
+    private let service = CBUUID(string: "FFF0")
+    private let notify = CBUUID(string: "FFF1")
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(background), name: UIApplication.didEnterBackgroundNotification, object: nil)
+    }
+    deinit { NotificationCenter.default.removeObserver(self) }
+    @objc private func background() { disconnect() }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame,
+              message.frameInfo.securityOrigin.protocol == "https",
+              message.frameInfo.securityOrigin.host == CounterWebView.appURL.host,
+              let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
+        if action == "disconnect" { disconnect() }
+        if action == "connect" {
+            disconnect()
+            pendingConnect = true
+            if central == nil { central = CBCentralManager(delegate: self, queue: .main) }
+            else { startIfReady() }
+        }
+    }
+    private func send(_ detail: [String: Any]) {
+        guard let web = web, web.url?.host == CounterWebView.appURL.host,
+              let json = try? JSONSerialization.data(withJSONObject: detail),
+              let text = String(data: json, encoding: .utf8) else { return }
+        web.evaluateJavaScript("window.dispatchEvent(new CustomEvent('counter-scale',{detail:\(text)}));", completionHandler: nil)
+    }
+    private func status(_ value: String) { send(["status": value]) }
+    func centralManagerDidUpdateState(_ central: CBCentralManager) { startIfReady() }
+    private func startIfReady() {
+        guard pendingConnect else { return }
+        switch central.state {
+        case .poweredOn:
+            status("Connecting")
+            central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+            timeout?.invalidate()
+            timeout = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
+                self?.disconnect(); self?.status("Scale not found. Turn it on and close VeSync.")
+            }
+        case .unauthorized: pendingConnect = false; status("Allow Bluetooth in iPhone Settings")
+        case .poweredOff: pendingConnect = false; status("Turn on iPhone Bluetooth")
+        case .unsupported: pendingConnect = false; status("Bluetooth unavailable")
+        default: break
+        }
+    }
+    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+        let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? peripheral.name ?? ""
+        guard pendingConnect, scale == nil, name == "Etekcity Nutrition Scale" else { return }
+        central.stopScan()
+        scale = peripheral
+        peripheral.delegate = self
+        central.connect(peripheral)
+    }
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) { peripheral.discoverServices([service]) }
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+        guard error == nil, let found = peripheral.services?.first(where: { $0.uuid == service }) else {
+            disconnect(); status("Unsupported scale service"); return
+        }
+        peripheral.discoverCharacteristics([notify], for: found)
+    }
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+        guard error == nil, let characteristic = service.characteristics?.first(where: { $0.uuid == notify && $0.properties.contains(.notify) }) else {
+            disconnect(); status("Scale weight notifications unavailable"); return
+        }
+        peripheral.setNotifyValue(true, for: characteristic)
+    }
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        guard error == nil, characteristic.isNotifying else { disconnect(); status("Could not read scale"); return }
+        timeout?.invalidate(); pendingConnect = false; status("Connected")
+    }
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        guard error == nil, characteristic.uuid == notify, let data = characteristic.value, data.count == 16 else { return }
+        send(["hex": data.map { String(format: "%02x", $0) }.joined()])
+    }
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) { disconnect(); status("Connection failed. Close other scale apps and retry.") }
+    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) { scale = nil; status("Disconnected") }
+    func disconnect() {
+        pendingConnect = false; timeout?.invalidate(); timeout = nil
+        central?.stopScan()
+        if let scale = scale { central?.cancelPeripheralConnection(scale) }
+        scale = nil
+        status("Disconnected")
+    }
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
+        if url.scheme == "https" && url.host == CounterWebView.appURL.host { decisionHandler(.allow) }
+        else { decisionHandler(.cancel) }
+    }
+}

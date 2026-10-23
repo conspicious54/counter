@@ -1573,20 +1573,156 @@ h1 {
 }
 
 /* Compact, full-width macro target rows. */
-.dashboard{padding:24px 25px;border-radius:16px;box-shadow:0 4px 24px #2a3c2907}
-.targets-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:25px}
-.targets-heading h2{font-size:17px;font-weight:600;letter-spacing:-.35px}
-.targets-heading .target-link{font-size:11px;gap:7px;min-height:30px}
-.target-rows{display:flex;flex-direction:column;gap:22px}
-.target-row-label{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:9px}
-.target-row-label>div{min-width:0;line-height:1.5}
-.target-row-label strong{font-weight:600}
-.target-row-label>div>span{color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
-.target-percentage{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;white-space:nowrap}
-.target-bar{height:9px;background:var(--line);border-radius:5px;overflow:hidden}
-.target-bar>div{height:100%;border-radius:5px;transition:width .4s ease;background:#9b9da8}
-.target-protein .target-bar>div{background:#42bb76}
-.target-carbs .target-bar>div{background:#24b6bd}
-.target-fat .target-bar>div{background:#e66a35}
-.dark .target-calories .target-bar>div{background:#a6a8b5}
-@media(max-width:600px){.dashboard{padding:21px 20px}.targets-heading{margin-bottom:20px}.targets-heading h2{font-size:16px}.target-row-label{font-size:12px;gap:8px}.target-percentage{font-size:11px}.target-rows{gap:20px}.target-bar{height:8px}}
+.dashboard {
+  padding: 24px 25px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px #2a3c2907;
+}
+.targets-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 25px;
+}
+.targets-heading h2 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.35px;
+}
+.targets-heading .target-link {
+  font-size: 11px;
+  gap: 7px;
+  min-height: 30px;
+}
+.target-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.target-row-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  margin-bottom: 9px;
+}
+.target-row-label > div {
+  min-width: 0;
+  line-height: 1.5;
+}
+.target-row-label strong {
+  font-weight: 600;
+}
+.target-row-label > div > span {
+  color: var(--muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.target-percentage {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.target-bar {
+  height: 9px;
+  background: var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.target-bar > div {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s ease;
+  background: #9b9da8;
+}
+.target-protein .target-bar > div {
+  background: #42bb76;
+}
+.target-carbs .target-bar > div {
+  background: #24b6bd;
+}
+.target-fat .target-bar > div {
+  background: #e66a35;
+}
+.dark .target-calories .target-bar > div {
+  background: #a6a8b5;
+}
+@media (max-width: 600px) {
+  .dashboard {
+    padding: 21px 20px;
+  }
+  .targets-heading {
+    margin-bottom: 20px;
+  }
+  .targets-heading h2 {
+    font-size: 16px;
+  }
+  .target-row-label {
+    font-size: 12px;
+    gap: 8px;
+  }
+  .target-percentage {
+    font-size: 11px;
+  }
+  .target-rows {
+    gap: 20px;
+  }
+  .target-bar {
+    height: 8px;
+  }
+}
+
+.weigh-button {
+  margin-top: 13px;
+}
+.scale-panel {
+  border: 1px solid var(--line);
+  background: var(--soft);
+  border-radius: 12px;
+  padding: 15px;
+  margin-top: 12px;
+}
+.scale-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+.scale-heading strong {
+  font-weight: 500;
+  flex: 1;
+}
+.scale-heading > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.scale-panel > p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.scale-panel > small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 10px;
+  line-height: 1.6;
+}
+.scale-live {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 18px 0;
+}
+.scale-live strong {
+  font-size: 28px;
+  font-weight: 400;
+}
+.scale-live > span {
+  font-size: 10px;
+  color: var(--muted);
+}
