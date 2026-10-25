@@ -35,6 +35,30 @@ export function fromUSDA(f: any): Food {
   const portions: Food["portions"] = {};
   if (f.servingSize > 0 && ["g", "grm"].includes(f.servingSizeUnit?.toLowerCase()))
     portions.serving = { quantity: f.servingSize, unit: "g" };
+  // Only infer count units when USDA explicitly ties its gram serving to that count.
+  const household = String(f.householdServingFullText || "")
+    .trim()
+    .toLowerCase();
+  const count = household.match(
+    /^(\d+(?:\.\d+)?)\s*(?:\/\s*(\d+(?:\.\d+)?))?\s*(slices?|pieces?|scoops?|cups?|tbsp|tablespoons?|tsp|teaspoons?)\b/,
+  );
+  if (count && portions.serving) {
+    const amount = Number(count[1]) / (count[2] ? Number(count[2]) : 1);
+    const label = count[3];
+    const unit = label.startsWith("slice")
+      ? "slice"
+      : label.startsWith("piece")
+        ? "piece"
+        : label.startsWith("scoop")
+          ? "scoop"
+          : label.startsWith("cup")
+            ? "cup"
+            : /^(tbsp|tablespoon)/.test(label)
+              ? "tbsp"
+              : "tsp";
+    if (amount > 0 && Number.isFinite(amount))
+      portions[unit] = { quantity: portions.serving.quantity / amount, unit: "g" };
+  }
   for (const p of f.foodPortions || []) {
     const label = `${p.modifier || ""} ${p.measureUnit?.name || ""}`.toLowerCase();
     const unit =

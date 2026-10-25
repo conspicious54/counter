@@ -844,6 +844,36 @@ export function FoodSheet({
                     )}
                   </div>
                 )}
+                {warning && config.ai && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      setError("");
+                      try {
+                        const replacement = await lookup({
+                          name: c.food.name,
+                          brand: c.food.brand || null,
+                          preparation: c.food.preparation || null,
+                          quantity: c.quantity,
+                          unit: c.unit,
+                          action: "add",
+                        });
+                        setCandidates((previous) =>
+                          previous.map((item, index) => (index === i ? replacement : item)),
+                        );
+                      } catch (e) {
+                        setError((e as Error).message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Find nutrition for this portion
+                  </button>
+                )}
                 <div className="quantity-line">
                   <input
                     aria-label={"Quantity for " + c.food.name}

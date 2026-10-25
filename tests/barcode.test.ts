@@ -172,3 +172,24 @@ test("partial match remains explicitly unknown; total database outage does not p
     null,
   );
 });
+
+test("USDA household serving supplies explicit slice mass, without guessing pizza weights", () => {
+  const record = {
+    fdcId: 123,
+    description: "Hawaiian pizza",
+    servingSize: 240,
+    servingSizeUnit: "g",
+    householdServingFullText: "2 slices (240 g)",
+    foodNutrients: [],
+  };
+  assert.deepEqual(fromUSDA(record).portions?.slice, { quantity: 120, unit: "g" });
+  assert.equal(
+    fromUSDA({ ...record, householdServingFullText: "1 pizza" }).portions?.slice,
+    undefined,
+  );
+  assert.equal(fromUSDA({ ...record, servingSizeUnit: "ml" }).portions?.slice, undefined);
+  assert.deepEqual(fromUSDA({ ...record, householdServingFullText: "1/2 slice" }).portions?.slice, {
+    quantity: 480,
+    unit: "g",
+  });
+});

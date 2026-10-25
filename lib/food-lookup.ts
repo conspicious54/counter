@@ -40,7 +40,8 @@ export async function lookupFood(p: Parsed, options: LookupOptions): Promise<Can
     if (!verified.length && !p.brand)
       verified = rankFoods(await options.search(p.name, true), p, options.entries);
   }
-  if (verified.length) return candidate(verified[0], p, verified);
+  const usable = verified.find((food) => !candidate(food, p, verified).warning);
+  if (usable) return candidate(usable, p, verified);
   // Estimates only reuse an exact description + portion basis, so small/large or gram/serving can't mix.
   const cached = local.find(
     (f) =>
@@ -51,8 +52,10 @@ export async function lookupFood(p: Parsed, options: LookupOptions): Promise<Can
   if (cached) return candidate(cached, p, [cached]);
   if (options.online && options.estimate) {
     const food = await options.estimate(p);
-    return candidate(food, p, [food]);
+    return candidate(food, p, [food, ...verified]);
   }
+  // Keep a database record available for weighing when estimation is unavailable.
+  if (verified.length) return candidate(verified[0], p, verified);
   throw new Error(
     options.online
       ? `No database match for “${p.name}”. Voice AI is unavailable; enter its nutrition label.`

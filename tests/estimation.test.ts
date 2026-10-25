@@ -184,3 +184,37 @@ test("restaurant brand punctuation does not hide a real match and serving sizes 
   assert.equal(rankFoods([fries], p).length, 1);
   assert.equal(rankFoods([{ ...fries, name: "Small fries" }], p).length, 0);
 });
+
+test("pizza slice without a verified conversion falls back to a labeled portion estimate", async () => {
+  const p: Parsed = { ...description, name: "Hawaiian pizza", unit: "slice", quantity: 2 };
+  const grams: Food = { ...real, name: p.name, basis: { quantity: 100, unit: "g" } };
+  let calls = 0;
+  const options = {
+    foods: [grams],
+    entries: [],
+    online: true,
+    database: true,
+    search: async () => [grams],
+    estimate: async () => {
+      calls++;
+      return estimate(p);
+    },
+  };
+  const result = await lookupFood(p, options);
+  assert.equal(result.warning, undefined);
+  assert.equal(result.unit, "slice");
+  assert.equal(scale(result).calories, 1200);
+  assert.equal(result.food.source, "AI estimate");
+  assert.equal(calls, 1);
+  assert.ok(result.alternatives.some((f) => f.source === "USDA"));
+  const verified = {
+    ...grams,
+    id: "usable",
+    portions: { slice: { quantity: 120, unit: "g" as const } },
+  };
+  const matched = await lookupFood(p, { ...options, search: async () => [grams, verified] });
+  assert.equal(matched.food.id, "usable");
+  assert.equal(calls, 1);
+  const cached = await lookupFood(p, { ...options, foods: [grams, result.food], online: false });
+  assert.equal(cached.food.source, "AI estimate");
+});
