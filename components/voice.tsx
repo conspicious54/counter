@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, RotateCcw } from "lucide-react";
+import { Mic, Square, RotateCcw, Loader2 } from "lucide-react";
 import { voiceActivity } from "@/lib/voice-activity";
 import { request } from "@/lib/store";
 import { Button } from "./ui/button";
@@ -34,8 +34,22 @@ export function Voice({
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<
+    "idle" | "opening" | "recording" | "finishing" | "transcribing"
+  >("idle");
+  const recording = phase === "recording";
+  const busy = phase === "finishing" || phase === "transcribing";
+  const opening = phase === "opening";
+  function stop() {
+    const r = recorder.current;
+    if (!r || r.state !== "recording") return;
+    // Acknowledge Stop before waiting for iOS's asynchronous final data/stop events.
+    setPhase("finishing");
+    if (timer.current) clearTimeout(timer.current);
+    stopAnalysis();
+    r.stop();
+    stream.current?.getTracks().forEach((track) => track.stop());
+  }
   const [error, setError] = useState("");
   const [audio, setAudio] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState("");
@@ -60,7 +74,7 @@ export function Voice({
     };
   }, []);
   async function transcribe(blob: Blob) {
-    setBusy(true);
+    setPhase("transcribing");
     setError("");
     try {
       const form = new FormData();
@@ -70,12 +84,13 @@ export function Voice({
     } catch (e) {
       if (active.current) setError((e as Error).message);
     } finally {
-      if (active.current) setBusy(false);
+      if (active.current) setPhase("idle");
     }
   }
   async function start() {
     if (starting.current || recorder.current?.state === "recording") return;
     starting.current = true;
+    setPhase("opening");
     setError("");
     try {
       if (!enabled) throw new Error("Voice transcription is unavailable. Please try again later.");
@@ -100,15 +115,21 @@ export function Voice({
         stream.current?.getTracks().forEach((t) => t.stop());
         if (!active.current) return;
         stopAnalysis();
-        setRecording(false);
+        setPhase("transcribing");
         const blob = new Blob(chunks, { type: r.mimeType });
         setAudio(blob);
+        if (!blob.size) {
+          setPhase("idle");
+          setError("No audio captured. Try speaking again.");
+          return;
+        }
         if (enabled) void transcribe(blob);
         else setError("Voice transcription is unavailable. Please try again later.");
       };
-      r.start();
+      // Collect small chunks during capture instead of packaging the entire recording on Stop.
+      r.start(250);
       setAudio(null);
-      setRecording(true);
+      setPhase("recording");
       // Finish after a natural pause, while retaining a manual stop for noisy rooms.
       try {
         const context = new AudioContext();
@@ -124,7 +145,7 @@ export function Voice({
           analyser.getFloatTimeDomainData(samples);
           const rms = Math.sqrt(samples.reduce((sum, x) => sum + x * x, 0) / samples.length);
           if (shouldFinish(rms, performance.now())) {
-            r.stop();
+            stop();
             return;
           }
           frame.current = requestAnimationFrame(listen);
@@ -133,10 +154,13 @@ export function Voice({
       } catch {
         /* Manual stop remains available if audio analysis is unsupported. */
       }
-      timer.current = setTimeout(() => r.state === "recording" && r.stop(), 60000);
+      if (r.state === "recording") timer.current = setTimeout(stop, 60000);
     } catch (e) {
       stream.current?.getTracks().forEach((t) => t.stop());
-      setError((e as Error).message);
+      if (active.current) {
+        setPhase("idle");
+        setError((e as Error).message);
+      }
     } finally {
       starting.current = false;
     }
@@ -145,21 +169,52 @@ export function Voice({
     <div className={"voice-panel" + (compact ? " compact" : "")}>
       <div className={"voice-orbit " + (recording ? "is-recording" : "")}>
         <button
-          aria-label={recording ? "Stop recording" : "Start recording"}
+          aria-label={
+            opening
+              ? "Opening microphone"
+              : phase === "finishing"
+                ? "Recording stopped"
+                : phase === "transcribing"
+                  ? "Transcribing recording"
+                  : recording
+                    ? "Stop recording"
+                    : "Start recording"
+          }
+          aria-busy={opening || busy}
           className="mic-button"
-          disabled={busy}
-          onClick={() => (recording ? recorder.current?.stop() : void start())}
+          disabled={busy || opening}
+          onClick={() => (recording ? stop() : void start())}
         >
-          {recording ? <Square size={25} fill="currentColor" /> : <Mic size={30} />}
+          {opening || busy ? (
+            <Loader2 size={24} className="spin" />
+          ) : recording ? (
+            <Square size={25} fill="currentColor" />
+          ) : (
+            <Mic size={30} />
+          )}
         </button>
       </div>
-      <h3>{busy ? "Transcribing…" : recording ? "Listening…" : "Speak your food"}</h3>
+      <h3 role="status" aria-live="polite">
+        {opening
+          ? "Opening microphone…"
+          : phase === "finishing"
+            ? "Recording stopped"
+            : phase === "transcribing"
+              ? "Transcribing…"
+              : recording
+                ? "Listening…"
+                : "Speak your food"}
+      </h3>
       <p>
-        {recording
-          ? "Pause when finished · tap to stop anytime"
-          : compact
-            ? "Tap the mic to speak"
-            : "“200 grams of chicken and 100 grams of rice.”"}
+        {opening
+          ? "Allow microphone access if asked"
+          : busy
+            ? "Your recording is captured. Finding the words…"
+            : recording
+              ? "Pause when finished · tap to stop anytime"
+              : compact
+                ? "Tap the mic to speak"
+                : "“200 grams of chicken and 100 grams of rice.”"}
       </p>
       {audio && error && (
         <div className="audio-review">
