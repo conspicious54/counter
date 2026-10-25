@@ -8,10 +8,12 @@ export function Voice({
   onText,
   enabled,
   autoStart = false,
+  compact = false,
 }: {
   onText: (text: string) => void;
   enabled: boolean;
   autoStart?: boolean;
+  compact?: boolean;
 }) {
   const started = useRef(false);
   const analysis = useRef<AudioContext | null>(null);
@@ -140,7 +142,7 @@ export function Voice({
     }
   }
   return (
-    <div className="voice-panel">
+    <div className={"voice-panel" + (compact ? " compact" : "")}>
       <div className={"voice-orbit " + (recording ? "is-recording" : "")}>
         <button
           aria-label={recording ? "Stop recording" : "Start recording"}
@@ -151,17 +153,13 @@ export function Voice({
           {recording ? <Square size={25} fill="currentColor" /> : <Mic size={30} />}
         </button>
       </div>
-      <h3>
-        {busy
-          ? "Finding your foods…"
-          : recording
-            ? "Go ahead. We’re listening."
-            : "Just say what you ate."}
-      </h3>
+      <h3>{busy ? "Transcribing…" : recording ? "Listening…" : "Speak your food"}</h3>
       <p>
         {recording
           ? "Pause when finished · tap to stop anytime"
-          : "“200 grams of chicken and 100 grams of rice.”"}
+          : compact
+            ? "Tap the mic to speak"
+            : "“200 grams of chicken and 100 grams of rice.”"}
       </p>
       {audio && error && (
         <div className="audio-review">

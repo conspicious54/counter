@@ -109,7 +109,7 @@ test("database miss automatically invokes estimate once and produces a normal co
   assert.equal(result.food.source, "AI estimate");
   assert.equal(result.warning, undefined);
 });
-test("database wins over saved AI estimate; remembered verified food never spends an AI call", async () => {
+test("confirmed exact estimates skip network; saved verified food still takes priority", async () => {
   let calls = 0,
     searches = 0;
   const options = {
@@ -127,11 +127,11 @@ test("database wins over saved AI estimate; remembered verified food never spend
     },
   };
   const result = await lookupFood(description, options);
-  assert.equal(result.food.id, real.id);
+  assert.equal(result.food.source, "AI estimate");
   assert.equal(calls, 0);
   const cached = await lookupFood(description, { ...options, foods: [estimate(), real] });
   assert.equal(cached.food.id, real.id);
-  assert.equal(searches, 1);
+  assert.equal(searches, 0);
   assert.equal(rankFoods([estimate(), real], description)[0].source, "USDA");
 });
 test("reuses exact cached estimate offline, but never silently mixes restaurants or weight bases", async () => {

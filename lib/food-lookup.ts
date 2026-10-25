@@ -28,6 +28,14 @@ export async function lookupFood(p: Parsed, options: LookupOptions): Promise<Can
   );
   const remembered = verified.find((f) => !candidate(f, p, verified).warning);
   if (remembered) return candidate(remembered, p, verified);
+  // Estimates only reuse an exact description + portion basis, so small/large or gram/serving can't mix.
+  const cached = local.find(
+    (f) =>
+      f.source === "AI estimate" &&
+      f.estimate?.inputKey === estimateKey(p) &&
+      !candidate(f, p, [f]).warning,
+  );
+  if (cached) return candidate(cached, p, [cached]);
   // A request failure is not a verified database miss: leave the error visible for retry.
   if (options.online && options.database) {
     const query = [p.brand, p.name, p.preparation].filter(Boolean).join(" ");
@@ -42,14 +50,6 @@ export async function lookupFood(p: Parsed, options: LookupOptions): Promise<Can
   }
   const usable = verified.find((food) => !candidate(food, p, verified).warning);
   if (usable) return candidate(usable, p, verified);
-  // Estimates only reuse an exact description + portion basis, so small/large or gram/serving can't mix.
-  const cached = local.find(
-    (f) =>
-      f.source === "AI estimate" &&
-      f.estimate?.inputKey === estimateKey(p) &&
-      !candidate(f, p, [f]).warning,
-  );
-  if (cached) return candidate(cached, p, [cached]);
   if (options.online && options.estimate) {
     const food = await options.estimate(p);
     return candidate(food, p, [food, ...verified]);

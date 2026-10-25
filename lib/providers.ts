@@ -162,3 +162,25 @@ export async function barcodeLookup(code: string): Promise<Food | null> {
     },
   );
 }
+
+// One USDA request fetches all portion records needed for a search result list.
+export async function usdaDetails(foods: Food[]): Promise<Food[]> {
+  const ids = foods.filter((f) => f.id.startsWith("usda-")).map((f) => Number(f.id.slice(5)));
+  if (!ids.length || !process.env.USDA_API_KEY) return foods;
+  const rows = await external(
+    `https://api.nal.usda.gov/fdc/v1/foods?api_key=${encodeURIComponent(process.env.USDA_API_KEY)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fdcIds: ids, format: "full" }),
+      next: { revalidate: 86400 },
+    },
+  );
+  const found = new Map<string, Food>(
+    (rows as any[]).map((row) => {
+      const food = fromUSDA(row);
+      return [food.id, food];
+    }),
+  );
+  return foods.map((food) => found.get(food.id) || food);
+}

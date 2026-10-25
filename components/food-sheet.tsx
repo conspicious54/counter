@@ -11,7 +11,6 @@ import {
   Plus,
   Search,
   Trash2,
-  Type,
 } from "lucide-react";
 import type { Candidate, Data, Food, Item, Parsed, Recipe, Unit } from "@/lib/types";
 import { fmt, modifyRecipe, scale, supportedUnits, totals } from "@/lib/nutrition";
@@ -26,6 +25,7 @@ import {
   sameBarcode,
 } from "@/lib/barcode-nutrition";
 import { lookupFood } from "@/lib/food-lookup";
+import { savedPhrase } from "@/lib/fast-entry";
 import { simpleParse } from "@/lib/simple-parse";
 import {
   loadMealDraft,
@@ -78,22 +78,17 @@ export function FoodSheet({
   const [addingIngredient, setAddingIngredient] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [savedSearch, setSavedSearch] = useState("");
-  const [foodQuery, setFoodQuery] = useState("");
-  const [foodResults, setFoodResults] = useState<Food[]>([]);
   const [recipeOnly, setRecipeOnly] = useState(false);
   const [weighing, setWeighing] = useState<number | null>(null);
   function receive(items: Candidate[]) {
     setCandidates((previous) => (addingIngredient ? appendIngredients(previous, items) : items));
     setAddingIngredient(false);
-    setFoodResults([]);
     setError("");
   }
   function addIngredient() {
     setWeighing(null);
     setAddingIngredient(true);
     setText("");
-    setFoodQuery("");
-    setFoodResults([]);
     setClarification("");
     setError("");
     setMethod("speak");
@@ -117,8 +112,6 @@ export function FoodSheet({
       setWeighing(null);
       setDraftLoaded(true);
       setSavedSearch("");
-      setFoodQuery("");
-      setFoodResults([]);
       setText("");
       setError("");
       setClarification("");
@@ -159,7 +152,11 @@ export function FoodSheet({
       search: async (query, branded) =>
         (
           await request(
-            "/api/search?q=" + encodeURIComponent(query) + (branded ? "&branded=1" : ""),
+            "/api/search?q=" +
+              encodeURIComponent(query) +
+              (branded ? "&branded=1" : "") +
+              "&unit=" +
+              p.unit,
           )
         ).foods,
       ...(config.ai
@@ -177,7 +174,14 @@ export function FoodSheet({
     });
   }
   async function parse(value = text) {
-    if (!value.trim()) return;
+    if (!value.trim() || busy) return;
+    const saved = savedPhrase(value, data.foods, data.recipes);
+    if (saved) {
+      setError("");
+      setClarification("");
+      receive(saved.map((item) => ({ ...item, alternatives: [item.food] })));
+      return;
+    }
     if (
       !config.ai &&
       !data.recipes.some((r) => value.toLowerCase().includes(r.name.toLowerCase())) &&
@@ -212,7 +216,17 @@ export function FoodSheet({
       const simple = !data.recipes.some((r) => value.toLowerCase().includes(r.name.toLowerCase()))
         ? simpleParse(value)
         : null;
-      if (simple) {
+      const exactRecipe = data.recipes.find(
+        (r) =>
+          r.name.toLowerCase().trim() ===
+          value
+            .trim()
+            .replace(/^(?:log|add)\s+(?:my\s+)?/i, "")
+            .toLowerCase(),
+      );
+      if (exactRecipe) {
+        parsed = { foods: [], recipeName: exactRecipe.name, clarification: null };
+      } else if (simple) {
         parsed = { foods: simple, recipeName: null, clarification: null };
       } else if (config.ai && navigator.onLine) {
         parsed = await request("/api/parse", {
@@ -365,40 +379,6 @@ export function FoodSheet({
   } catch {
     invalid = true;
   }
-  async function searchFood(query = foodQuery) {
-    if (!query.trim()) return;
-    setBusy(true);
-    setError("");
-    try {
-      const p: Parsed = {
-        name: query.trim(),
-        brand: null,
-        quantity: 100,
-        unit: "g",
-        preparation: null,
-        action: "add",
-      };
-      let foods = rankFoods(
-        data.foods.filter((f) => f.source !== "Demo"),
-        p,
-        data.entries,
-      );
-      if (config.usda && navigator.onLine) {
-        const result = await request("/api/search?q=" + encodeURIComponent(query));
-        foods = rankFoods([...foods, ...result.foods], p, data.entries);
-        if (!foods.length) {
-          const branded = await request("/api/search?branded=1&q=" + encodeURIComponent(query));
-          foods = rankFoods(branded.foods, p, data.entries);
-        }
-      }
-      setFoodResults(foods);
-      if (!foods.length) await parse(query);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   function confirm() {
     try {
       const items = recipeItems(candidates);
@@ -423,11 +403,7 @@ export function FoodSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={addingIngredient ? "Add ingredient" : candidates.length ? "Your meal" : "Add food"}
-      description={
-        candidates.length
-          ? "Check the match. Make it yours."
-          : "Speak it, scan it, or keep it simple."
-      }
+      description={candidates.length ? "Review, then add." : "Say it or type it."}
     >
       {addingIngredient && candidates.length > 0 && (
         <div className="meal-draft-summary">
@@ -442,80 +418,40 @@ export function FoodSheet({
       )}
       {(!candidates.length || addingIngredient) && !manual && (
         <>
-          {method !== "type" && (
-            <form
-              className="ingredient-search"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void searchFood();
-              }}
-            >
-              <input
-                aria-label="Search food database"
-                placeholder="Find a food, e.g. blueberries"
-                value={foodQuery}
-                onChange={(e) => setFoodQuery(e.target.value)}
-              />
-              <Button
-                size="icon"
-                aria-label="Search food database"
-                disabled={busy || !foodQuery.trim()}
-              >
-                <Search size={17} />
-              </Button>
-            </form>
-          )}
-          {foodResults.length > 0 && (
-            <div className="food-search-results">
-              {foodResults.map((f) => (
-                <button key={f.id} onClick={() => choose(f)}>
-                  <span>
-                    <strong>{f.name}</strong>
-                    <small>
-                      {f.brand ? f.brand + " · " : ""}
-                      {f.source} · {fmt(f.nutrients.calories)} kcal per {f.basis.quantity}{" "}
-                      {f.basis.unit}
-                    </small>
-                  </span>
-                  <Plus size={17} />
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="method-tabs">
+          <div className="entry-actions">
             {(
               [
                 { id: "speak", label: "Speak", Icon: Mic },
-                { id: "scan", label: "Scan", Icon: Barcode },
-                { id: "type", label: "Type", Icon: Type },
+                { id: "scan", label: "Scan barcode", Icon: Barcode },
               ] as const
-            ).map(({ id, label, Icon }) => (
+            )
+              .filter(({ id }) => id !== "speak" || method !== "speak")
+              .map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  className={method === id ? "active" : ""}
+                  onClick={() => {
+                    setMethod(id);
+                    setScanner(id === "scan");
+                    setError("");
+                  }}
+                >
+                  <Icon size={17} />
+                  {label}
+                </button>
+              ))}
+            {method === "scan" && (
               <button
-                key={id}
-                className={method === id ? "active" : ""}
                 onClick={() => {
-                  setMethod(id);
-                  setScanner(id === "scan");
-                  setError("");
+                  setMethod("type");
+                  setScanner(false);
                 }}
               >
-                <Icon size={17} />
-                {label}
+                Type instead
               </button>
-            ))}
+            )}
           </div>
-          {method === "speak" && (
-            <Voice
-              autoStart
-              enabled={config.ai}
-              onText={(value) => {
-                setText(value);
-                setMethod("type");
-                void parse(value);
-              }}
-            />
-          )}
-          {method === "type" && (
+          {method !== "scan" && (
             <form
               className="type-form"
               onSubmit={(e) => {
@@ -528,20 +464,14 @@ export function FoodSheet({
               </label>
               <textarea
                 id="food-description"
-                autoFocus
                 placeholder="What did you eat?"
                 value={text}
+                onFocus={() => setMethod("type")}
                 onChange={(e) => setText(e.target.value)}
-                rows={3}
+                rows={2}
               />
               <div className="input-footer">
-                <span>
-                  {config.ai
-                    ? "Database first. AI estimate if needed."
-                    : config.usda
-                      ? "USDA lookup · simple entries need no AI"
-                      : "Saved foods · nutrition label entry"}
-                </span>
+                <span>One food or a whole meal.</span>
                 <button
                   className="send-button"
                   aria-label="Find foods"
@@ -551,6 +481,18 @@ export function FoodSheet({
                 </button>
               </div>
             </form>
+          )}
+          {method === "speak" && (
+            <Voice
+              autoStart
+              compact
+              enabled={config.ai}
+              onText={(value) => {
+                setText(value);
+                setMethod("type");
+                void parse(value);
+              }}
+            />
           )}
           {method === "scan" && (
             <>

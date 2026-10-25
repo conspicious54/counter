@@ -142,3 +142,7 @@ Incomplete saved products are rechecked online rather than cached forever. Missi
 ### Nutrition label camera
 
 Scan → **Scan nutrition label**, or use the same button in the missing-product form. Photograph the full nutrition panel including serving size. Counter sends a resized photo to the authenticated `/api/label` route, reads only calories, protein, total carbohydrate and total fat, and prefills an editable review form. It never estimates missing label values. Explicit serving grams/mL are retained for quantity scaling; no density is inferred. Confirmed custom foods keep their barcode for repeat scans. Photos are not stored by Counter. `OPENAI_LABEL_MODEL` defaults to `gpt-4.1-mini`; the existing server-only OpenAI key and personal-session protection apply. Label reading requires connectivity; manual entry remains available.
+
+### Fast food entry
+
+The entry sheet uses one description field with voice and barcode actions. Exact saved food/meal phrases resolve locally. Confirmed AI estimates reuse only the exact description/brand/preparation/unit key, after checking saved verified foods first; they remain labeled estimates. New foods still use database matching before estimation. Search skips portion-detail requests for complete gram/ounce records, batches needed USDA details through `/foods`, and uses a bounded 15-minute process cache with in-flight deduplication. Failed requests are never cached.
