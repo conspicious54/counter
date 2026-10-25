@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Barcode,
@@ -36,6 +36,7 @@ import {
 } from "@/lib/meal-draft";
 import { Button } from "./ui/button";
 import { Sheet } from "./ui/sheet";
+import { LabelScan } from "./label-scan";
 import { Scanner } from "./scanner";
 import { Voice } from "./voice";
 import { ScaleControl } from "./scale-control";
@@ -603,6 +604,19 @@ export function FoodSheet({
                   </Button>
                 </div>
               )}
+              {config.ai && (
+                <LabelScan
+                  disabled={busy}
+                  onBusy={setBusy}
+                  onRead={(food) => {
+                    setManualInitial(food);
+                    setManualIndex(null);
+                    setManual(true);
+                    setScanner(false);
+                    setError("");
+                  }}
+                />
+              )}
               <small className="muted">Open Food Facts + USDA · saved labels work offline</small>
             </>
           )}
@@ -692,6 +706,7 @@ export function FoodSheet({
       )}
       {manual && (
         <ManualFood
+          labelScanning={config.ai}
           barcode={manualInitial?.barcode || (method === "scan" ? code : "")}
           initialFood={manualInitial}
           onCancel={() => {
@@ -1093,22 +1108,33 @@ export function FoodSheet({
   );
 }
 export function ManualFood({
+  labelScanning = false,
   barcode,
   initialFood,
   onSave,
   onCancel,
 }: {
+  labelScanning?: boolean;
   barcode: string;
   initialFood?: Food;
   onSave: (food: Food) => void;
   onCancel: () => void;
 }) {
   const [error, setError] = useState("");
+  const [reading, setReading] = useState<Food | undefined>();
+  const [readingBusy, setReadingBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [revision, setRevision] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const draft = reading || initialFood;
   return (
     <form
+      key={revision}
+      ref={formRef}
       className="manual-form"
       onSubmit={(e) => {
         e.preventDefault();
+        if (readingBusy) return;
         const fd = new FormData(e.currentTarget);
         const quantity = Number(fd.get("basis"));
         if (quantity <= 0) return;
@@ -1127,9 +1153,7 @@ export function ManualFood({
           return;
         }
         onSave({
-          ...(initialFood?.basis.unit === String(fd.get("unit"))
-            ? { portions: initialFood?.portions }
-            : {}),
+          ...(draft?.basis.unit === String(fd.get("unit")) ? { portions: draft?.portions } : {}),
           id: "custom-" + crypto.randomUUID(),
           name: String(fd.get("name")).trim(),
           brand: String(fd.get("brand")).trim() || undefined,
@@ -1140,22 +1164,39 @@ export function ManualFood({
         });
       }}
     >
+      {labelScanning && (
+        <LabelScan
+          onBusy={setReadingBusy}
+          onRead={(food, message) => {
+            const current = formRef.current ? new FormData(formRef.current) : null;
+            setReading({
+              ...food,
+              name: food.name || String(current?.get("name") || draft?.name || ""),
+              brand: food.brand || String(current?.get("brand") || draft?.brand || ""),
+            });
+            setNote(message || "Label read. Check the serving size and four values before saving.");
+            setError("");
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
       <p className="muted">
-        Copy the nutrition facts from the label. Leave unknown nutrients blank.
+        {note ||
+          "Photograph the full nutrition panel, including serving size, or enter the four values below. Leave unreadable values blank."}
       </p>
       <label>
         Food name
         <input
           name="name"
           placeholder="Product name"
-          defaultValue={initialFood?.name}
+          defaultValue={draft?.name}
           required
           maxLength={160}
         />
       </label>
       <label>
         Brand <span className="muted">(optional)</span>
-        <input name="brand" placeholder="Brand" defaultValue={initialFood?.brand} maxLength={100} />
+        <input name="brand" placeholder="Brand" defaultValue={draft?.brand} maxLength={100} />
       </label>
       <div className="field-pair">
         <label>
@@ -1165,13 +1206,13 @@ export function ManualFood({
             type="number"
             min="0.01"
             step="any"
-            defaultValue={initialFood?.basis.quantity || 100}
+            defaultValue={draft?.basis.quantity || 100}
             required
           />
         </label>
         <label>
           Unit
-          <select name="unit" defaultValue={initialFood?.basis.unit || "g"}>
+          <select name="unit" defaultValue={draft?.basis.unit || "g"}>
             <option value="g">grams</option>
             <option value="ml">milliliters</option>
             <option value="serving">serving</option>
@@ -1188,13 +1229,13 @@ export function ManualFood({
               min="0"
               step="any"
               placeholder="Unknown"
-              defaultValue={initialFood?.nutrients[k as keyof Food["nutrients"]] ?? ""}
+              defaultValue={draft?.nutrients[k as keyof Food["nutrients"]] ?? ""}
             />
           </label>
         ))}
       </div>
       {error && <p className="error">{error}</p>}
-      <Button className="wide">
+      <Button className="wide" disabled={readingBusy}>
         <Check size={17} />
         Save food & set quantity
       </Button>
