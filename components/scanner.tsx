@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
-import { BarcodeFormat, DecodeHintType } from "@zxing/library";
+import { scannerHints } from "@/lib/scanner-config";
 import { Flashlight, FlashlightOff, ScanLine } from "lucide-react";
 export function Scanner({ onCode }: { onCode: (code: string) => void }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -21,13 +21,6 @@ export function Scanner({ onCode }: { onCode: (code: string) => void }) {
     setTorchError("");
     const element = video.current;
     let controls: IScannerControls | undefined;
-    const hints = new Map();
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-    ]);
     const hideLight = () => {
       if (document.visibilityState === "hidden")
         void controls
@@ -38,10 +31,20 @@ export function Scanner({ onCode }: { onCode: (code: string) => void }) {
           .catch(() => {});
     };
     document.addEventListener("visibilitychange", hideLight);
-    const reader = new BrowserMultiFormatReader(hints);
+    const reader = new BrowserMultiFormatReader(scannerHints(), {
+      delayBetweenScanAttempts: 120,
+      delayBetweenScanSuccess: 500,
+    });
     reader
       .decodeFromConstraints(
-        { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false },
+        {
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        },
         video.current!,
         (result, _, ctl) => {
           if (result && !stopped) {
