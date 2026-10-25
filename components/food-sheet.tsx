@@ -585,7 +585,25 @@ export function FoodSheet({
                   <ArrowRight size={18} />
                 </Button>
               </form>
-              <small className="muted">Live Open Food Facts lookup · camera requires HTTPS</small>
+              {error && !busy && /^\d{8,14}$/.test(code) && (
+                <div className="barcode-form">
+                  <Button variant="outline" onClick={() => scanCode(code)}>
+                    Retry lookup
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setManualInitial(undefined);
+                      setManualIndex(null);
+                      setManual(true);
+                      setError("");
+                    }}
+                  >
+                    Enter nutrition label
+                  </Button>
+                </div>
+              )}
+              <small className="muted">Open Food Facts + USDA · saved labels work offline</small>
             </>
           )}
           {clarification && (

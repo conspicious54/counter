@@ -1,6 +1,6 @@
 import type { Food } from "./types";
 import {
-  fromOpenFoodFacts,
+  readOpenFoodFactsResponse,
   resolveBarcode,
   sameBarcode,
   numeric,
@@ -120,7 +120,7 @@ export async function barcodeLookup(code: string): Promise<Food | null> {
   return resolveBarcode(
     code,
     async () => {
-      const data = await external(
+      const response = await fetch(
         `https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=code,product_name,product_name_en,brands,serving_size,serving_quantity,serving_quantity_unit,product_quantity_unit,nutrition_data_per,nutriments`,
         {
           headers: { "User-Agent": "StillMacroTracker/1.0 (personal nutrition logger)" },
@@ -128,7 +128,7 @@ export async function barcodeLookup(code: string): Promise<Food | null> {
           next: { revalidate: 3600 },
         },
       );
-      return data.status === 1 ? fromOpenFoodFacts(data.product, code) : null;
+      return readOpenFoodFactsResponse(response, code);
     },
     async () => {
       if (!process.env.USDA_API_KEY) return [];

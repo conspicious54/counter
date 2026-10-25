@@ -155,3 +155,14 @@ export function barcodeCandidate(food: Food): Candidate {
       : {}),
   };
 }
+
+// OFF uses HTTP 404 for a successful search with no matching product.
+export async function readOpenFoodFactsResponse(
+  response: Response,
+  code: string,
+): Promise<Food | null> {
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Open Food Facts unavailable (${response.status}).`);
+  const data = await response.json();
+  return data.status === 1 ? fromOpenFoodFacts(data.product, code) : null;
+}

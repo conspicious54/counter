@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   fromOpenFoodFacts,
+  readOpenFoodFactsResponse,
   combineBarcodeNutrition,
   resolveBarcode,
   completeNutrition,
@@ -192,4 +193,22 @@ test("USDA household serving supplies explicit slice mass, without guessing pizz
     quantity: 480,
     unit: "g",
   });
+});
+
+test("OFF HTTP 404 is a genuine product miss, not a database outage", async () => {
+  const food = await resolveBarcode(
+    code,
+    () =>
+      readOpenFoodFactsResponse(new Response(JSON.stringify({ status: 0 }), { status: 404 }), code),
+    async () => [],
+  );
+  assert.equal(food, null);
+  await assert.rejects(
+    () => readOpenFoodFactsResponse(new Response("rate limited", { status: 429 }), code),
+    /429/,
+  );
+  await assert.rejects(
+    () => readOpenFoodFactsResponse(new Response("outage", { status: 503 }), code),
+    /503/,
+  );
 });
