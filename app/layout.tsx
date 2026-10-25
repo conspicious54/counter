@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: "A quieter way to track calories and macros. Speak, scan, or type.",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Counter" },
-  icons: { icon: "/counter-icon.svg", apple: "/counter-apple-touch-icon.png" },
+  icons: { icon: "/counter-icon-v2-192.png", apple: "/counter-icon-v2-180.png" },
 };
 export const viewport: Viewport = {
   width: "device-width",

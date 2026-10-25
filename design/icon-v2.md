@@ -1,0 +1,7 @@
+# Counter icon, version 2
+
+Generated using the built-in image generation tool. Master: `public/counter-icon-v2-1024.png`. Native icon: `native-ios/Counter/Assets.xcassets/AppIcon.appiconset/Counter.png`. PNG exports are opaque RGB, full bleed, with system-applied corner masking.
+
+## Final prompt
+
+Use case: logo-brand. Create ONE finished production iPhone app icon artwork for Counter, a premium minimalist food and macro logger. Square 1024x1024 full bleed artwork, background fills every pixel, absolutely no external mockup, phone, border, rounded-square container, lettering or caption. iOS itself will round the corners. Deep nearly-black graphite with a very subtle forest green radial glow. Center a single bold sculptural lowercase-inspired C / open circular plate symbol, made from luminous satin mint-to-lime green translucent glass, thick rounded circular stroke, clean opening on the right. Three very short subtly raised horizontal rounded macro strokes sit within the right opening, integrated elegantly as a tiny abstract counter, not a menu icon. Restrained dimensional depth, soft specular edge highlights and exquisite material quality, clear uncluttered silhouette readable at 48 pixels. Symbol fits entirely within central 65 percent of image with generous consistent breathing room. Straight-on orthographic view. Modern confident native iPhone app aesthetic, understated luxury, no food illustration, no fork, no leaf, no gradients outside the icon, no text, no tiny details, no Apple logo, no watermark.
