@@ -49,7 +49,11 @@ export function FoodSheet({
   onAdd,
   onFood,
   onRecipe,
+  siriFood,
+  onSiriConsumed,
 }: {
+  siriFood?: { id: string; text: string } | null;
+  onSiriConsumed?: () => void;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   data: Data;
@@ -173,6 +177,20 @@ export function FoodSheet({
         : {}),
     });
   }
+  const siriStarted = useRef("");
+  const [siriPrepared, setSiriPrepared] = useState("");
+  useEffect(() => {
+    if (!open || !draftLoaded || !siriFood || busy || siriStarted.current === siriFood.id) return;
+    if (siriPrepared !== siriFood.id) {
+      setAddingIngredient(candidates.length > 0);
+      setMethod("type");
+      setText(siriFood.text);
+      setSiriPrepared(siriFood.id);
+      return;
+    }
+    siriStarted.current = siriFood.id;
+    void parse(siriFood.text).finally(() => onSiriConsumed?.());
+  }, [open, draftLoaded, siriFood, siriPrepared, busy]);
   async function parse(value = text) {
     if (!value.trim() || busy) return;
     const saved = savedPhrase(value, data.foods, data.recipes);

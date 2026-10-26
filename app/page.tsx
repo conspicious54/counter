@@ -38,6 +38,7 @@ export default function Home() {
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [siriFood, setSiriFood] = useState<{ id: string; text: string } | null>(null);
   const [settings, setSettings] = useState(false);
   const [edit, setEdit] = useState<Entry | null>(null);
   const [editQuantity, setEditQuantity] = useState(0);
@@ -48,6 +49,48 @@ export default function Home() {
   const [config, setConfig] = useState({ ai: false, usda: false, sync: false, locked: false });
   const [online, setOnline] = useState(true);
   const [ready, setReady] = useState(false);
+  const [configReady, setConfigReady] = useState(false);
+  useEffect(() => {
+    if (!ready || !data || !configReady) return;
+    const host = window as typeof window & {
+      counterReceiveFood?: (request: { id: string; text: string }) => boolean;
+      webkit?: { messageHandlers?: { counterSiri?: { postMessage: (message: object) => void } } };
+    };
+    host.counterReceiveFood = (request) => {
+      if (
+        !request ||
+        typeof request.id !== "string" ||
+        typeof request.text !== "string" ||
+        !request.text.trim()
+      )
+        return false;
+      try {
+        sessionStorage.setItem("counter.siri.request", JSON.stringify(request));
+      } catch {
+        return false;
+      }
+      setSiriFood(request);
+      setDate(localDay());
+      setTab("today");
+      setAddOpen(true);
+      return true;
+    };
+    try {
+      const saved = sessionStorage.getItem("counter.siri.request");
+      if (saved) host.counterReceiveFood(JSON.parse(saved));
+    } catch {
+      /* Leave malformed storage alone; ordinary logging remains available. */
+    }
+    const pull = () => host.webkit?.messageHandlers?.counterSiri?.postMessage({ action: "ready" });
+    pull();
+    window.addEventListener("focus", pull);
+    document.addEventListener("visibilitychange", pull);
+    return () => {
+      delete host.counterReceiveFood;
+      window.removeEventListener("focus", pull);
+      document.removeEventListener("visibilitychange", pull);
+    };
+  }, [ready, !!data, configReady]);
   const [group, setGroup] = useState<Entry[] | null>(null);
   const [recipeName, setRecipeName] = useState("");
   useEffect(() => {
@@ -79,7 +122,10 @@ export default function Home() {
     const timer = setInterval(() => setToday(localDay()), 30000);
     fetch("/api/config")
       .then((r) => r.json())
-      .then(setConfig)
+      .then((value) => {
+        setConfig(value);
+        setConfigReady(true);
+      })
       .catch(() => {});
     const savedTheme = localStorage.getItem("still.theme") || "system";
     setTheme(savedTheme);
@@ -487,6 +533,11 @@ export default function Home() {
           <FoodSheet
             open={addOpen && !config.locked}
             onOpenChange={setAddOpen}
+            siriFood={siriFood}
+            onSiriConsumed={() => {
+              sessionStorage.removeItem("counter.siri.request");
+              setSiriFood(null);
+            }}
             data={data}
             config={config}
             onAdd={add}

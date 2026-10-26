@@ -1,10 +1,12 @@
 import SwiftUI
+import AppIntents
 import WebKit
 import CoreBluetooth
 
 @main
 struct CounterApp: App {
     @UIApplicationDelegateAdaptor(CounterAppDelegate.self) var appDelegate
+    init() { CounterShortcuts.updateAppShortcutParameters() }
     var body: some Scene { WindowGroup { CounterRootView() } }
 }
 final class CounterAppDelegate: NSObject, UIApplicationDelegate {
@@ -36,6 +38,7 @@ struct CounterWebView: UIViewRepresentable {
         config.allowsInlineMediaPlayback = true
         config.userContentController.add(context.coordinator, name: "counterScale")
         config.userContentController.add(context.coordinator, name: "counterBody")
+        config.userContentController.add(context.coordinator, name: "counterSiri")
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.uiDelegate = context.coordinator
@@ -62,6 +65,7 @@ struct CounterWebView: UIViewRepresentable {
         coordinator.disconnect()
         web.configuration.userContentController.removeScriptMessageHandler(forName: "counterScale")
         web.configuration.userContentController.removeScriptMessageHandler(forName: "counterBody")
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "counterSiri")
     }
 }
 
@@ -83,6 +87,8 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
     private let notify = CBUUID(string: "FFF1")
     override init() {
         super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(deliverSiriFood), name: .counterSiriFood, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(deliverSiriFood), name: UIApplication.didBecomeActiveNotification, object: nil)
         BodyScaleManager.shared.onChange = { [weak self] in self?.pushBodySnapshot() }
         NotificationCenter.default.addObserver(self, selector: #selector(background), name: UIApplication.didEnterBackgroundNotification, object: nil)
     }
@@ -93,6 +99,7 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
               message.frameInfo.securityOrigin.protocol == "https",
               message.frameInfo.securityOrigin.host == CounterWebView.appURL.host,
               let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
+        if message.name == "counterSiri" { deliverSiriFood(); return }
         if message.name == "counterBody" {
             if action == "show" { BodyScaleManager.shared.presentSheet = true }
             if action == "sync" { pushBodySnapshot() }
@@ -104,6 +111,24 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
             pendingConnect = true
             if central == nil { central = CBCentralManager(delegate: self, queue: .main) }
             else { startIfReady() }
+        }
+    }
+    private var deliveringSiri = false
+    @objc private func deliverSiriFood() {
+        guard !deliveringSiri, UIApplication.shared.applicationState == .active,
+              let web = web, web.url?.scheme == "https", web.url?.host == CounterWebView.appURL.host,
+              let queue = UserDefaults.standard.array(forKey: "counter.siri.pending") as? [[String: String]],
+              let request = queue.first,
+              let json = try? JSONSerialization.data(withJSONObject: request),
+              let text = String(data: json, encoding: .utf8) else { return }
+        deliveringSiri = true
+        web.evaluateJavaScript("typeof window.counterReceiveFood === 'function' && window.counterReceiveFood(\(text))") { [weak self] result, error in
+            self?.deliveringSiri = false
+            if error == nil, result as? Bool == true {
+                var pending = UserDefaults.standard.array(forKey: "counter.siri.pending") as? [[String: String]] ?? []
+                pending.removeAll { $0["id"] == request["id"] }
+                UserDefaults.standard.set(pending, forKey: "counter.siri.pending")
+            }
         }
     }
     func pushBodySnapshot() {

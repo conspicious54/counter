@@ -43,3 +43,9 @@ swiftc native-ios/Counter/BodyWeightLedger.swift native-ios/Tests/BodyWeightTest
 ```
 
 A signed personal build may provision its existing web session through the `COUNTER_PERSONAL_SESSION` Xcode build setting. This is a signed, expiring app session, never an OpenAI key or the server access-code secret. Leave the setting empty for normal builds and unlock once in the web UI instead. Never commit its value or build logs containing it.
+
+### Siri food logging
+
+Say **“Siri, log food in Counter.”** Siri asks **“What did you eat?”**; answer with a food description or saved meal name. Counter opens and runs the normal matching pipeline, ready to confirm or weigh. The action also appears as **Log food** in Apple Shortcuts. To use only **“Siri, log food”**, make a personal shortcut named **Log food** using Counter’s Log food action, with Food set to Ask Each Time.
+
+The native handoff is queued until the authenticated web app is ready. Descriptions are passed through JSON, not inserted into executable JavaScript. Existing meal drafts are retained. No food is committed before the normal review step. Siri’s one-sentence phrase recognition depends on iOS; the supported flow is the command followed by its spoken question.
