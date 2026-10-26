@@ -28,6 +28,33 @@ const unitMap: Record<string, Unit> = {
   scoop: "scoop",
   scoops: "scoop",
 };
+// A short noun phrase needs a database search, not a model to repeat its name.
+// Quantity/prose/recipe modifications remain on the structured parsing path.
+export function nameOnlyParse(text: string): Parsed[] | null {
+  const name = text
+    .trim()
+    .replace(/[.!?]+$/, "")
+    .trim();
+  if (!name || name.split(/\s+/).length > 6 || !/^[a-z][a-z '-]*$/i.test(name)) return null;
+  if (
+    /\b(some|a|an|one|two|three|four|five|six|seven|eight|nine|ten|half|quarter|and|or|with|without|but|instead|another|extra|usual|my|our|i|we|it|its|it's|had|ate|got|went|from|add|log|please|of|serving|servings|cup|cups|tablespoon|teaspoon|slice|slices|scoop|scoops|piece|pieces)\b/i.test(
+      name,
+    )
+  )
+    return null;
+  return [
+    {
+      name,
+      quantity: 100,
+      unit: "g",
+      brand: null,
+      preparation:
+        name.match(/\b(raw|cooked|baked|fried|boiled|steamed|roasted)\b/i)?.[1].toLowerCase() ||
+        null,
+      action: "add",
+    },
+  ];
+}
 export function simpleParse(text: string): Parsed[] | null {
   if (/\b(but|instead|usual|without|another|recipe)\b/i.test(text)) return null;
   const clean = text.trim().replace(/^(?:i had|i ate|add|log)\s+/i, "");
@@ -42,6 +69,8 @@ export function simpleParse(text: string): Parsed[] | null {
         action: "add",
       },
     ];
+  const named = nameOnlyParse(clean);
+  if (named) return named;
   const parts = clean.split(/\s+and\s+|\s*,\s*/);
   if (parts.length > 20) return null;
   const result: Parsed[] = [];

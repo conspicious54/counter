@@ -76,10 +76,36 @@ test("black cherries match the whole fruit, never cherry-flavored products", () 
   assert.deepEqual(rankFoods([yogurt], parsed("black cherries")), []);
   assert.equal(compatible(yogurt, parsed("black cherry soy yogurt", { brand: "Silk" })), true);
 });
-test("bare produce names skip AI without treating restaurant dishes as plain fruit", () => {
+test("name-only foods skip AI while saved-meal references remain distinct", () => {
   assert.equal(simpleParse("black cherries")?.[0].name, "black cherries");
   assert.equal(simpleParse("blueberries")?.[0].unit, "g");
-  assert.equal(simpleParse("black cherry soy yogurt"), null);
-  assert.equal(simpleParse("Papa John's pizza"), null);
+  assert.equal(simpleParse("black cherry soy yogurt")?.[0].name, "black cherry soy yogurt");
+  assert.equal(simpleParse("Papa John's pizza")?.[0].name, "Papa John's pizza");
   assert.equal(simpleParse("my breakfast sandwich"), null);
+});
+
+test("simple food names and explicit preparation skip model parsing beyond the fruit list", () => {
+  for (const name of [
+    "spaghetti squash",
+    "broccoli",
+    "chicken breast",
+    "Greek yogurt",
+    "cottage cheese",
+    "butternut squash",
+  ]) {
+    const foods = simpleParse(name);
+    assert.equal(foods?.length, 1);
+    assert.equal(foods?.[0].name, name);
+    assert.equal(foods?.[0].unit, "g");
+  }
+  assert.equal(simpleParse("cooked spaghetti squash")?.[0].preparation, "cooked");
+  assert.equal(simpleParse("raw spaghetti squash.")?.[0].preparation, "raw");
+  for (const text of [
+    "two large eggs",
+    "a chicken sandwich",
+    "I just went to the restaurant",
+    "my usual breakfast",
+    "chicken and rice",
+  ])
+    assert.equal(simpleParse(text), null);
 });
