@@ -1,10 +1,18 @@
 "use client";
+import { nativeCaptureHandler } from "@/lib/native-capture";
+import { NativeVoice } from "./native-voice";
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square, RotateCcw, Loader2 } from "lucide-react";
 import { voiceActivity } from "@/lib/voice-activity";
 import { request } from "@/lib/store";
 import { Button } from "./ui/button";
-export function Voice({
+export function Voice(props: Parameters<typeof BrowserVoice>[0]) {
+  const [native, setNative] = useState<boolean | null>(null);
+  useEffect(() => setNative(!!nativeCaptureHandler()), []);
+  if (native === null) return <p role="status">Opening microphone…</p>;
+  return native ? <NativeVoice {...props} /> : <BrowserVoice {...props} />;
+}
+function BrowserVoice({
   onText,
   enabled,
   autoStart = false,

@@ -1,9 +1,17 @@
 "use client";
+import { nativeCaptureHandler } from "@/lib/native-capture";
+import { NativeScanner } from "./native-scanner";
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { scannerHints } from "@/lib/scanner-config";
 import { Flashlight, FlashlightOff, ScanLine } from "lucide-react";
-export function Scanner({ onCode }: { onCode: (code: string) => void }) {
+export function Scanner(props: Parameters<typeof BrowserScanner>[0]) {
+  const [native, setNative] = useState<boolean | null>(null);
+  useEffect(() => setNative(!!nativeCaptureHandler()), []);
+  if (native === null) return <p role="status">Opening camera…</p>;
+  return native ? <NativeScanner {...props} /> : <BrowserScanner {...props} />;
+}
+function BrowserScanner({ onCode }: { onCode: (code: string) => void }) {
   const onCodeRef = useRef(onCode);
   onCodeRef.current = onCode;
   const video = useRef<HTMLVideoElement>(null);

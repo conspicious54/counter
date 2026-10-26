@@ -39,10 +39,12 @@ struct CounterWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "counterScale")
         config.userContentController.add(context.coordinator, name: "counterBody")
         config.userContentController.add(context.coordinator, name: "counterSiri")
+        config.userContentController.add(context.coordinator, name: "counterCapture")
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.uiDelegate = context.coordinator
         context.coordinator.web = web
+        context.coordinator.capture.web = web
         // Optional locally provisioned session, supplied only at signing time. No API key is embedded.
         if let token = Bundle.main.object(forInfoDictionaryKey: "CounterPersonalSession") as? String,
            !token.isEmpty,
@@ -63,9 +65,11 @@ struct CounterWebView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {}
     static func dismantleUIView(_ web: WKWebView, coordinator: ScaleBridge) {
         coordinator.disconnect()
+        coordinator.capture.cancelAll()
         web.configuration.userContentController.removeScriptMessageHandler(forName: "counterScale")
         web.configuration.userContentController.removeScriptMessageHandler(forName: "counterBody")
         web.configuration.userContentController.removeScriptMessageHandler(forName: "counterSiri")
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "counterCapture")
     }
 }
 
@@ -78,6 +82,7 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
             && origin.host == CounterWebView.appURL.host && (origin.port == 443 || origin.port == 0)
         decisionHandler(trusted ? .grant : .deny)
     }
+    let capture = NativeCapture()
     weak var web: WKWebView?
     private var central: CBCentralManager!
     private var scale: CBPeripheral?
@@ -99,6 +104,7 @@ final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate,
               message.frameInfo.securityOrigin.protocol == "https",
               message.frameInfo.securityOrigin.host == CounterWebView.appURL.host,
               let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
+        if message.name == "counterCapture" { capture.handle(body); return }
         if message.name == "counterSiri" { deliverSiriFood(); return }
         if message.name == "counterBody" {
             if action == "show" { BodyScaleManager.shared.presentSheet = true }

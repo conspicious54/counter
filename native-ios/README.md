@@ -49,3 +49,11 @@ A signed personal build may provision its existing web session through the `COUN
 Say **“Siri, log food in Counter.”** Siri asks **“What did you eat?”**; answer with a food description or saved meal name. Counter opens and runs the normal matching pipeline, ready to confirm or weigh. The action also appears as **Log food** in Apple Shortcuts. To use only **“Siri, log food”**, make a personal shortcut named **Log food** using Counter’s Log food action, with Food set to Ask Each Time.
 
 The native handoff is queued until the authenticated web app is ready. Descriptions are passed through JSON, not inserted into executable JavaScript. Existing meal drafts are retained. No food is committed before the normal review step. Siri’s one-sentence phrase recognition depends on iOS; the supported flow is the command followed by its spoken question.
+
+### Native food capture
+
+Speak uses AVAudioRecorder with AAC/m4a recording, app-level permission, automatic pause detection, manual stop and a 60-second limit. Session configuration and audio I/O run on a serial worker queue. Transcription still uses the authenticated server route; no OpenAI key is embedded. Untranscribed recordings stay in Application Support/Counter/Recordings until successful transcription or explicit Discard. Reopening Speak recovers a saved recording instead of silently replacing it. Switching modes ends recording and retains it for recovery.
+
+Scan uses a full-screen AVCaptureSession with continuous autofocus, native EAN/UPC/Code 128/Code 39/ITF decoding, native flash and Close controls. Start/stop/configuration run on a dedicated worker queue. Close, app backgrounding and switching away turn the flash off and release the camera. Captured barcode strings enter the existing lookup pipeline. Camera permission denial returns to manual barcode entry.
+
+The capture bridge accepts only the trusted top-level HTTPS Counter app. Every session has a request ID; late results from a closed component are ignored. Browser/PWA installs retain their web capture fallback. Native logs in subsystem com.connorbyers.counter, category capture contain microphone-start and camera-first-preview timings, without recordings, food descriptions or barcode values. Hardware latency must be measured on the phone; a passing build does not establish a specific startup time.
