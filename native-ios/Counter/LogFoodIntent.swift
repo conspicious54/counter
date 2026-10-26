@@ -3,7 +3,7 @@ import Foundation
 
 struct LogFoodIntent: AppIntent {
     static var title: LocalizedStringResource = "Log food"
-    static var description = IntentDescription("Describe food or a saved meal and review it in Counter.")
+    static var description = IntentDescription("Describe food or a saved meal and review it in CalCounter.")
     // Keep iOS 17 compatibility; foreground presentation is required for weighing/review.
     static var openAppWhenRun: Bool = true
 

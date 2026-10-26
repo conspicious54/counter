@@ -20,7 +20,7 @@ export function Unlock({
       onOpenChange={(v) => {
         if (!v) onClose();
       }}
-      title="Unlock Counter"
+      title="Unlock CalCounter"
       description="Enter your personal access code once on this device."
     >
       <form

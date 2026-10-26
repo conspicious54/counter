@@ -94,7 +94,7 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
                 guard let self = self, self.requestedVoice == id else { return }
                 guard granted else {
                     self.requestedVoice = nil
-                    self.event(id, "error", ["message": "Microphone access is off. Enable it in Settings → Counter."])
+                    self.event(id, "error", ["message": "Microphone access is off. Enable it in Settings → CalCounter."])
                     return
                 }
                 self.prepareVoice(id, tap: tap)
@@ -221,7 +221,7 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
         if scanner?.requestID == id { return }
         scanner?.close()
         guard let web = web, let root = web.window?.rootViewController else {
-            event(id, "error", ["message": "Camera unavailable. Reopen Counter and try again."]); return
+            event(id, "error", ["message": "Camera unavailable. Reopen CalCounter and try again."]); return
         }
         var presenter = root
         while let next = presenter.presentedViewController { presenter = next }
@@ -313,7 +313,7 @@ final class BarcodeCamera: UIViewController, AVCaptureMetadataOutputObjectsDeleg
             DispatchQueue.main.async {
                 guard let self = self, !self.closed else { return }
                 if allowed { self.configure() }
-                else { self.fail("Camera access is off. Enable it in Settings → Counter.") }
+                else { self.fail("Camera access is off. Enable it in Settings → CalCounter.") }
             }
         }
         switch AVCaptureDevice.authorizationStatus(for: .video) {

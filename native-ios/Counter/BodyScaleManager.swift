@@ -60,7 +60,7 @@ final class BodyScaleManager: NSObject, ObservableObject, CBCentralManagerDelega
     private func setStatus(_ value: String) { guard status != value else { return }; status = value; onChange?() }
     private func persist(_ change: (inout BodyScaleState) -> Void) -> Bool {
         do { try ledger?.update(change); storageError = nil; refresh(); return ledger != nil }
-        catch { storageError = "Could not save body-weight data. Free device storage; keep Counter open to retry."; onChange?(); return false }
+        catch { storageError = "Could not save body-weight data. Free device storage; keep CalCounter open to retry."; onChange?(); return false }
     }
     @objc private func foreground() {
         openLedger()
@@ -224,7 +224,7 @@ final class BodyScaleManager: NSObject, ObservableObject, CBCentralManagerDelega
             else { setStatus("Stable weigh-in already saved") }
         } catch {
             pendingFrames.append((frame, peripheral.identifier.uuidString, stamp))
-            storageError = "Weigh-in is waiting for device storage. Keep Counter open and free space."
+            storageError = "Weigh-in is waiting for device storage. Keep CalCounter open and free space."
             onChange?()
         }
     }
@@ -291,7 +291,7 @@ struct BodyScaleView: View {
                     }
                 }
                 Section {
-                    Text("Keep Bluetooth enabled. iOS may reconnect in the background; capture is not guaranteed after force-quitting Counter. Weigh-ins save on this iPhone before appearing in the app. No VeSync or body composition estimates.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Keep Bluetooth enabled. iOS may reconnect in the background; capture is not guaranteed after force-quitting CalCounter. Weigh-ins save on this iPhone before appearing in the app. No VeSync or body composition estimates.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Body weight")

@@ -1,6 +1,6 @@
 {
-  "name": "Counter",
-  "short_name": "Counter",
+  "name": "CalCounter",
+  "short_name": "CalCounter",
   "description": "Fast, simple food and macro tracking.",
   "start_url": "/",
   "scope": "/",
@@ -9,13 +9,13 @@
   "theme_color": "#f8f9f6",
   "icons": [
     {
-      "src": "/counter-icon-v2-192.png",
+      "src": "/calcounter-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/counter-icon-v2-512.png",
+      "src": "/calcounter-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

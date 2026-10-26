@@ -1,4 +1,4 @@
-# Counter iPhone Bluetooth app
+# CalCounter iPhone app
 
 Native SwiftUI/WKWebView shell for https://dumbcount.netlify.app/ with a scoped CoreBluetooth bridge. The website remains the same Next.js app; the native bridge supplies raw BLE notifications only to the configured HTTPS origin. Other navigation is blocked. No API secrets are bundled. No undocumented scale commands are sent.
 
@@ -46,7 +46,7 @@ A signed personal build may provision its existing web session through the `COUN
 
 ### Siri food logging
 
-Say **“Siri, log food in Counter.”** Siri asks **“What did you eat?”**; answer with a food description or saved meal name. Counter opens and runs the normal matching pipeline, ready to confirm or weigh. The action also appears as **Log food** in Apple Shortcuts. To use only **“Siri, log food”**, make a personal shortcut named **Log food** using Counter’s Log food action, with Food set to Ask Each Time.
+Say **“Siri, log food in CalCounter.”** Siri asks **“What did you eat?”**; answer with a food description or saved meal name. Counter opens and runs the normal matching pipeline, ready to confirm or weigh. The action also appears as **Log food** in Apple Shortcuts. To use only **“Siri, log food”**, make a personal shortcut named **Log food** using Counter’s Log food action, with Food set to Ask Each Time.
 
 The native handoff is queued until the authenticated web app is ready. Descriptions are passed through JSON, not inserted into executable JavaScript. Existing meal drafts are retained. No food is committed before the normal review step. Siri’s one-sentence phrase recognition depends on iOS; the supported flow is the command followed by its spoken question.
 

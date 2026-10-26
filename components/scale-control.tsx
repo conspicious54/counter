@@ -96,8 +96,8 @@ export function ScaleControl({
       </div>
       {!supported ? (
         <p>
-          To use your Etekcity scale on iPhone, open this in the native Counter app. Safari supports
-          manual entry.
+          To use your Etekcity scale on iPhone, open this in the native CalCounter app. Safari
+          supports manual entry.
         </p>
       ) : status !== "Connected" ? (
         <Button

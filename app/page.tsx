@@ -260,7 +260,7 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `still-backup-${today}.json`;
+    a.download = `calcounter-backup-${today}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -268,11 +268,11 @@ export default function Home() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="wordmark" href="/" aria-label="Still home">
+        <a className="wordmark" href="/" aria-label="CalCounter home">
           <span className="brand-mark">
-            <Leaf size={17} strokeWidth={1.6} />
+            <img src="/calcounter-icon-192.png" alt="" width={31} height={31} />
           </span>
-          still<span className="wordmark-dot">.</span>
+          CalCounter
         </a>
         <div className="topbar-right">
           <span className={"connection-dot " + (!online ? "offline" : "")} />

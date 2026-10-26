@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Counter — Food & Macros",
+  title: "CalCounter — Food & Macros",
   description: "A quieter way to track calories and macros. Speak, scan, or type.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Counter" },
-  icons: { icon: "/counter-icon-v2-192.png", apple: "/counter-icon-v2-180.png" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "CalCounter" },
+  icons: { icon: "/calcounter-icon-192.png", apple: "/calcounter-icon-180.png" },
 };
 export const viewport: Viewport = {
   width: "device-width",

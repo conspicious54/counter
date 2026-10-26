@@ -1,4 +1,4 @@
-# Still
+# CalCounter
 
 A mobile-first, installable calorie and macro logger built with Next.js App Router, TypeScript, Tailwind CSS, shadcn-style Radix components, Supabase, OpenAI, USDA FoodData Central, Open Food Facts, and ZXing camera barcode decoding.
 
