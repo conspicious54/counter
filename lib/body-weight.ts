@@ -45,6 +45,7 @@ export function storeBodyWeights(incoming: unknown[]): BodyWeight[] {
   }
   const next = mergeBodyWeights(existing, incoming);
   localStorage.setItem(BODY_WEIGHT_KEY, JSON.stringify(next));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("counter-body-saved"));
   return next;
 }
 type NativeBodyWindow = Window & {

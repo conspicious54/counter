@@ -11,6 +11,7 @@
 		35BDB3E7EAC9AEC036D27B1A /* BodyWeightLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */; };
 		434EAE9E9028D14ECE43A37C /* etekcity_esf551_ble.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6BB7E88F3BD147DFFE7E5C70 /* etekcity_esf551_ble.txt */; };
 		5179101F77F4A59066494168 /* BodyScaleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */; };
+		BBE7AAF0ACCE7DF75D4650BF /* DialedWeightSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB929AE4320313CA0C3F62F /* DialedWeightSync.swift */; };
 		CFCA8DE84F2226FDA53F77CD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3405526E53A2C1884EB6BE9E /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -20,6 +21,7 @@
 		3E7543F952F244029818C28B /* Counter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Counter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyWeightLedger.swift; sourceTree = "<group>"; };
 		6BB7E88F3BD147DFFE7E5C70 /* etekcity_esf551_ble.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = etekcity_esf551_ble.txt; sourceTree = "<group>"; };
+		9FB929AE4320313CA0C3F62F /* DialedWeightSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialedWeightSync.swift; sourceTree = "<group>"; };
 		CEF4C6FC89ED01E0E1B0C613 /* CounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -39,6 +41,7 @@
 				14FAEEA0A7E911C5F0C497A1 /* BodyScaleManager.swift */,
 				5EBBA7F395117FEE67ECE97B /* BodyWeightLedger.swift */,
 				CEF4C6FC89ED01E0E1B0C613 /* CounterApp.swift */,
+				9FB929AE4320313CA0C3F62F /* DialedWeightSync.swift */,
 				D98808808F85D19DB85B4046 /* Licenses */,
 			);
 			path = Counter;
@@ -134,6 +137,7 @@
 				5179101F77F4A59066494168 /* BodyScaleManager.swift in Sources */,
 				35BDB3E7EAC9AEC036D27B1A /* BodyWeightLedger.swift in Sources */,
 				1CE5A3969FE3A48FEAFE8F00 /* CounterApp.swift in Sources */,
+				BBE7AAF0ACCE7DF75D4650BF /* DialedWeightSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

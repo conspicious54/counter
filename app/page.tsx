@@ -20,7 +20,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import type { Data, Entry, Food, Item, Nutrients, Recipe, Targets, Unit } from "@/lib/types";
-import { commit, load, subscribe, sync } from "@/lib/store";
+import { commit, load, subscribe, sync, currentData } from "@/lib/store";
 import { dailyTotals, fmt, keys, localDay, scale, supportedUnits, totals } from "@/lib/nutrition";
 import { BodyWeightPanel, BodyScaleSettings } from "@/components/body-weight";
 import { readBodyWeights } from "@/lib/body-weight";
@@ -28,6 +28,7 @@ import { Unlock } from "@/components/unlock";
 import { FoodSheet } from "@/components/food-sheet";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { watchDialedSync } from "@/lib/dialed-sync";
 import { watchAppUpdates } from "@/lib/app-updates";
 const labels = { calories: "Calories", protein: "Protein", carbs: "Carbs", fat: "Fat" };
 export default function Home() {
@@ -72,6 +73,9 @@ export default function Home() {
     window.addEventListener("offline", refresh);
     document.addEventListener("visibilitychange", refresh);
     const stopUpdates = watchAppUpdates();
+    const stopDialed = watchDialedSync(currentData);
+    const dialedStatus = (event: Event) => setStatus((event as CustomEvent).detail.message);
+    window.addEventListener("counter-dialed-status", dialedStatus);
     const timer = setInterval(() => setToday(localDay()), 30000);
     fetch("/api/config")
       .then((r) => r.json())
@@ -84,6 +88,8 @@ export default function Home() {
     return () => {
       clean();
       stopUpdates();
+      stopDialed();
+      window.removeEventListener("counter-dialed-status", dialedStatus);
       clearInterval(timer);
       window.removeEventListener("online", refresh);
       window.removeEventListener("offline", refresh);

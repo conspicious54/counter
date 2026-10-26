@@ -52,6 +52,7 @@ final class BodyScaleManager: NSObject, ObservableObject, CBCentralManagerDelega
     private func refresh() {
         guard let ledger = ledger else { return }
         records = ledger.state.records
+        DialedWeightSync.shared.enqueue(records)
         rememberedName = ledger.state.deviceName
         enabled = ledger.state.reconnect
         onChange?()

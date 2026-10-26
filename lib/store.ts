@@ -42,6 +42,9 @@ export function load() {
   if (!raw) localStorage.setItem(STORAGE, JSON.stringify(envelope));
   return envelope.data;
 }
+export function currentData() {
+  return envelope.data;
+}
 export function subscribe(fn: typeof listener) {
   listener = fn;
   return () => {
@@ -82,6 +85,7 @@ export function commit(data: Data) {
     );
   }
   envelope = next;
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("counter-data-saved"));
   emit(isCloudConfigured() ? "Saved on device · syncing" : "Saved on this device");
   void sync().catch(() => {});
 }

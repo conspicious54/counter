@@ -13,6 +13,12 @@ final class CounterAppDelegate: NSObject, UIApplicationDelegate {
         BodyScaleManager.shared.start(restoring: restoring)
         return true
     }
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
+        if identifier == DialedWeightSync.sessionID {
+            DialedWeightSync.shared.completion = completionHandler
+            DialedWeightSync.shared.restoreSession()
+        } else { completionHandler() }
+    }
 }
 struct CounterRootView: View {
     @ObservedObject private var bodyScale = BodyScaleManager.shared

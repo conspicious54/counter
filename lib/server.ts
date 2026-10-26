@@ -11,7 +11,7 @@ export function throttle(user: string) {
   requests.set(user, bucket);
 }
 // Verify Supabase JWTs with Auth, never trust an installation ID or unsigned claims.
-export async function guard(req: NextRequest, privateService = false) {
+export async function guard(req: NextRequest, privateService = false, throttleRequests = true) {
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== req.headers.get("host"))
     throw new Error("Cross-origin requests are not allowed.");
@@ -22,12 +22,12 @@ export async function guard(req: NextRequest, privateService = false) {
     if (!token) throw new Error("Please reconnect your anonymous session.");
     const { data, error } = await createClient(url, key).auth.getUser(token);
     if (error || !data.user) throw new Error("Session expired. Please reconnect.");
-    if (privateService) throttle(data.user.id);
+    if (privateService && throttleRequests) throttle(data.user.id);
   } else if (privateService && process.env.COUNTER_ACCESS_CODE) {
     const token = req.cookies.get(SESSION_COOKIE)?.value;
     if (!validSession(token, process.env.COUNTER_ACCESS_CODE))
       throw new Error("Unlock Counter to use voice logging.");
-    throttle("personal");
+    if (throttleRequests) throttle("personal");
   } else if (privateService && process.env.NODE_ENV === "production")
     throw new Error("Personal access has not been configured.");
 }
