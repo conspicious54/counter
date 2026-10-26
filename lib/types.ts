@@ -44,7 +44,16 @@ export type Entry = Item & {
 };
 export type Recipe = { id: string; name: string; items: Item[] };
 export type Targets = { calories: number; protein: number; carbs: number; fat: number };
+export type WaterEntry = {
+  id: string;
+  container: "yeti" | "hydro";
+  ounces: number;
+  day: string;
+  timestamp: string;
+  deleted?: boolean;
+};
 export type Data = {
+  water?: WaterEntry[];
   entries: Entry[];
   foods: Food[];
   recipes: Recipe[];

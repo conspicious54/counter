@@ -1,7 +1,7 @@
 -- Enable Authentication > Providers > Anonymous Sign-ins in Supabase.
 create table if not exists public.macro_records (
  user_id uuid not null references auth.users(id) on delete cascade,
- kind text not null check (kind in ('entry','food','recipe','targets')),
+ kind text not null check (kind in ('entry','food','recipe','targets','water')),
  id text not null,
  payload jsonb not null,
  updated_at timestamptz not null default now(),

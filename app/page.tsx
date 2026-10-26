@@ -22,6 +22,8 @@ import {
 import type { Data, Entry, Food, Item, Nutrients, Recipe, Targets, Unit } from "@/lib/types";
 import { commit, load, subscribe, sync, currentData } from "@/lib/store";
 import { dailyTotals, fmt, keys, localDay, scale, supportedUnits, totals } from "@/lib/nutrition";
+import { WaterPanel } from "@/components/water-panel";
+import { makeWaterEntry, removeWater } from "@/lib/water";
 import { BodyWeightPanel, BodyScaleSettings } from "@/components/body-weight";
 import { readBodyWeights } from "@/lib/body-weight";
 import { Unlock } from "@/components/unlock";
@@ -378,6 +380,31 @@ export default function Home() {
             </p>
           )}
         </section>
+        {data && (
+          <WaterPanel
+            day={selected}
+            entries={data.water}
+            onAdd={(container) => {
+              try {
+                const fresh = currentData();
+                const currentDay = localDay();
+                const day = tab === "today" ? currentDay : selected;
+                save({ ...fresh, water: [...(fresh.water || []), makeWaterEntry(container, day)] });
+                setToday(currentDay);
+              } catch (e) {
+                setError((e as Error).message);
+              }
+            }}
+            onRemove={(id) => {
+              try {
+                const fresh = currentData();
+                save({ ...fresh, water: removeWater(fresh.water || [], id) });
+              } catch (e) {
+                setError((e as Error).message);
+              }
+            }}
+          />
+        )}
         <BodyWeightPanel day={tab === "history" ? selected : undefined} />
         <section className="food-section">
           <div className="section-title">

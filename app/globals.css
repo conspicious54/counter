@@ -1904,3 +1904,117 @@ h1 {
   font-size: 25px;
   letter-spacing: -1px;
 }
+
+.water-panel {
+  margin: 20px 0;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+}
+.water-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.water-heading h2 {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+.water-heading > div {
+  text-align: right;
+}
+.water-heading strong {
+  font-size: 25px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.water-heading strong span {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.water-heading small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.water-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.water-buttons > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 84px;
+  padding: 12px 8px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--fg);
+  text-align: left;
+  transition:
+    transform 0.1s,
+    background 0.1s;
+}
+.water-buttons > button:active {
+  transform: scale(0.96);
+}
+.water-buttons strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.water-buttons small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+.water-empty {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+.water-drinks {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.water-drinks li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.water-drinks li > svg {
+  width: 20px;
+  height: 28px;
+  color: var(--green);
+}
+.water-drinks li > span {
+  flex: 1;
+}
+.water-drinks small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 2px;
+}
+.water-drinks strong {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.water-undo {
+  margin-top: 10px;
+  font-size: 11px;
+}

@@ -12,6 +12,7 @@ export const emptyData = (): Data => ({
   entries: [],
   foods: [],
   recipes: [],
+  water: [],
   targets: { calories: 0, protein: 0, carbs: 0, fat: 0 },
   installationId: crypto.randomUUID(),
 });
@@ -58,6 +59,7 @@ function rows(d: Data): RecordRow[] {
   return [
     ...d.entries.map((x) => ({ kind: "entry", id: x.id, payload: x })),
     ...d.foods.map((x) => ({ kind: "food", id: x.id, payload: x })),
+    ...(d.water || []).map((x) => ({ kind: "water", id: x.id, payload: x })),
     ...d.recipes.map((x) => ({ kind: "recipe", id: x.id, payload: x })),
     { kind: "targets", id: "targets", payload: d.targets },
   ];
@@ -215,6 +217,7 @@ export async function sync() {
           ...envelope.data,
           entries: merged.filter((r) => r.kind === "entry").map((r) => r.payload),
           foods: merged.filter((r) => r.kind === "food").map((r) => r.payload),
+          water: merged.filter((r) => r.kind === "water").map((r) => r.payload),
           recipes: merged.filter((r) => r.kind === "recipe").map((r) => r.payload),
           targets: merged.find((r) => r.kind === "targets")?.payload || envelope.data.targets,
         },
