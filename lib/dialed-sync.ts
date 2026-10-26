@@ -15,15 +15,19 @@ function status(state: string, message: string) {
 export function watchDialedSync(getData: () => Data) {
   let active = true,
     flight = false,
+    changed = false,
     timer: ReturnType<typeof setTimeout> | undefined,
     configured: boolean | undefined;
   const update = () => {
+    changed = true;
+    if (flight) return;
     clearTimeout(timer);
     timer = setTimeout(() => void flush(), 100);
   };
   async function flush() {
     if (!active || flight) return;
     flight = true;
+    changed = false;
     try {
       const data = getData(),
         queue = read();
@@ -48,7 +52,9 @@ export function watchDialedSync(getData: () => Data) {
       if (!configured) return;
       while (active) {
         const latest = read(),
-          batch = Object.values(latest.pending).slice(0, 20);
+          batch = Object.values(latest.pending)
+            .sort((a, b) => b.day.date.localeCompare(a.day.date))
+            .slice(0, 20);
         if (!batch.length) {
           status("synced", "Saved · synced to Dialed");
           break;
@@ -66,6 +72,7 @@ export function watchDialedSync(getData: () => Data) {
             current.sent[item.day.date] = item.fingerprint;
           }
         localStorage.setItem(KEY, JSON.stringify(current));
+        if (changed) break;
       }
     } catch (e) {
       if (active)
@@ -76,6 +83,7 @@ export function watchDialedSync(getData: () => Data) {
         );
     } finally {
       flight = false;
+      if (active && changed) update();
     }
   }
   const wake = () => {

@@ -47,7 +47,7 @@ final class DialedWeightSync: NSObject, URLSessionDelegate, URLSessionTaskDelega
                 let formatter = DateFormatter(); formatter.calendar = Calendar(identifier: .gregorian); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.timeZone = .autoupdatingCurrent; formatter.dateFormat = "yyyy-MM-dd"
                 let pending = self.records.filter { !self.acknowledged.contains($0.id) }
                 let grouped = Dictionary(grouping: pending, by: { formatter.string(from: $0.recordedAt) })
-                let dates = grouped.keys.sorted().prefix(20)
+                let dates = grouped.keys.sorted(by: >).prefix(20)
                 guard !dates.isEmpty else { return }
                 let iso = ISO8601DateFormatter()
                 let days: [[String: Any]] = dates.compactMap { date in

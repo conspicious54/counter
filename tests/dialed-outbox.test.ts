@@ -81,3 +81,51 @@ test("durable outbox retries failures and sends latest edits without blocking th
     globalThis.fetch = original;
   }
 });
+
+test("edits made during an upload are flushed immediately after it instead of waiting for the retry timer", async () => {
+  disk.clear();
+  const data = emptyData();
+  data.entries = [
+    {
+      id: "e",
+      groupId: "g",
+      day: "2026-10-25",
+      timestamp: "2026-10-25T15:00:00Z",
+      quantity: 100,
+      unit: "g",
+      food: {
+        id: "f",
+        name: "Food",
+        source: "Custom",
+        basis: { quantity: 100, unit: "g" },
+        nutrients: { calories: 150, protein: 4, carbs: 30, fat: 0 },
+      },
+    },
+  ];
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const calls: any[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (path, options) => {
+    if (!options?.method) return Response.json({ configured: true });
+    calls.push(JSON.parse(String(options.body)));
+    if (calls.length === 1) await gate;
+    return Response.json({ synced: true });
+  }) as typeof fetch;
+  const stop = watchDialedSync(() => data);
+  try {
+    await until(() => calls.length === 1);
+    data.entries = [{ ...data.entries[0], quantity: 200 }];
+    windowEvents.dispatchEvent(new Event("counter-data-saved"));
+    release();
+    await until(() => calls.length === 2);
+    assert.equal(calls[1].days[0].nutrition.calories, 300);
+    await until(
+      () => Object.keys(JSON.parse(disk.get("counter.dialed-outbox.v1")!).pending).length === 0,
+    );
+  } finally {
+    release();
+    stop();
+    globalThis.fetch = original;
+  }
+});
