@@ -436,7 +436,7 @@ export function FoodSheet({
           </button>
         </div>
       )}
-      {(!candidates.length || addingIngredient) && !manual && (
+      {(!candidates.length || addingIngredient) && !manual && !busy && (
         <>
           <div className="entry-actions">
             {(

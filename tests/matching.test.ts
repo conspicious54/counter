@@ -56,11 +56,30 @@ test("simple measured entries need no model call and preserve quantities/state",
 });
 test("simple parser declines missing weights, recipe modifications, and ambiguous prose", () => {
   for (const text of [
-    "blueberries",
     "some chicken",
     "my sandwich but add another egg",
     "0 g blueberries",
     "150 g oats instead of rice",
   ])
     assert.equal(simpleParse(text), null);
+});
+
+test("black cherries match the whole fruit, never cherry-flavored products", () => {
+  const base = { ...demoFoods[6], source: "USDA" as const };
+  const fruit = { ...base, id: "cherry", name: "Cherries, sweet, raw" };
+  const yogurt = { ...base, id: "silk", name: "Silk Black Cherry Soy Yogurt", brand: "Silk" };
+  const juice = { ...base, id: "juice", name: "Black cherry juice" };
+  assert.deepEqual(
+    rankFoods([yogurt, juice, fruit], parsed("black cherries")).map((f) => f.id),
+    ["cherry"],
+  );
+  assert.deepEqual(rankFoods([yogurt], parsed("black cherries")), []);
+  assert.equal(compatible(yogurt, parsed("black cherry soy yogurt", { brand: "Silk" })), true);
+});
+test("bare produce names skip AI without treating restaurant dishes as plain fruit", () => {
+  assert.equal(simpleParse("black cherries")?.[0].name, "black cherries");
+  assert.equal(simpleParse("blueberries")?.[0].unit, "g");
+  assert.equal(simpleParse("black cherry soy yogurt"), null);
+  assert.equal(simpleParse("Papa John's pizza"), null);
+  assert.equal(simpleParse("my breakfast sandwich"), null);
 });

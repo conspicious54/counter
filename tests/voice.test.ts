@@ -10,8 +10,8 @@ test("silence and a short click do not finish recording", () => {
 test("speech finishes after a pause and continued speech resets the pause", () => {
   const update = voiceActivity();
   for (let i = 0; i < 5; i++) update(0.04, i * 20);
-  assert.equal(update(0, 1500), false);
+  assert.equal(update(0, 900), false);
   assert.equal(update(0.04, 1600), false);
-  assert.equal(update(0, 3200), false);
-  assert.equal(update(0, 3400), true);
+  assert.equal(update(0, 2500), false);
+  assert.equal(update(0, 2700), true);
 });

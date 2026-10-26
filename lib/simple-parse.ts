@@ -1,4 +1,5 @@
 import type { Parsed, Unit } from "./types";
+import { plainProduce } from "./matching";
 // Free deterministic fast path. Complex descriptions fall through to AI; nutrition never comes from parsing.
 const unitMap: Record<string, Unit> = {
   g: "g",
@@ -30,6 +31,17 @@ const unitMap: Record<string, Unit> = {
 export function simpleParse(text: string): Parsed[] | null {
   if (/\b(but|instead|usual|without|another|recipe)\b/i.test(text)) return null;
   const clean = text.trim().replace(/^(?:i had|i ate|add|log)\s+/i, "");
+  if (plainProduce(clean))
+    return [
+      {
+        name: clean,
+        quantity: 100,
+        unit: "g",
+        brand: null,
+        preparation: null,
+        action: "add",
+      },
+    ];
   const parts = clean.split(/\s+and\s+|\s*,\s*/);
   if (parts.length > 20) return null;
   const result: Parsed[] = [];

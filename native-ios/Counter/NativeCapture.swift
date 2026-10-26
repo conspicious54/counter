@@ -142,7 +142,7 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
         if recorder.averagePower(forChannel: 0) > -35 {
             speechSamples += 1; lastSpeech = now
         }
-        if (speechSamples >= 3 && now - lastSpeech > 1.7) || now - startedAt >= 60 {
+        if (speechSamples >= 3 && now - lastSpeech > 1.0) || now - startedAt >= 60 {
             finishVoice(id: id, deliver: true)
         }
     }

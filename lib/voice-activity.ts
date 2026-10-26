@@ -9,6 +9,6 @@ export function voiceActivity() {
       lastVoice = now;
       if (speechFrames >= 5) heardSpeech = true;
     }
-    return heardSpeech && now - lastVoice > 1700;
+    return heardSpeech && now - lastVoice > 1000;
   };
 }

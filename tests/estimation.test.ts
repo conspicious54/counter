@@ -218,3 +218,71 @@ test("pizza slice without a verified conversion falls back to a labeled portion 
   const cached = await lookupFood(p, { ...options, foods: [grams, result.food], online: false });
   assert.equal(cached.food.source, "AI estimate");
 });
+
+test("plain black cherries use one generic lookup and ignore a remembered flavored yogurt", async () => {
+  const p: Parsed = {
+    name: "black cherries",
+    brand: null,
+    preparation: null,
+    quantity: 100,
+    unit: "g",
+    action: "add",
+  };
+  const fruit: Food = {
+    id: "cherry",
+    name: "Cherries, sweet, raw",
+    source: "USDA",
+    basis: { quantity: 100, unit: "g" },
+    nutrients: { calories: 63, protein: 1.06, carbs: 16.01, fat: 0.2 },
+  };
+  const yogurt: Food = {
+    ...fruit,
+    id: "silk",
+    name: "Silk Black Cherry Soy Yogurt",
+    brand: "Silk",
+  };
+  const queries: string[] = [];
+  const result = await lookupFood(p, {
+    foods: [yogurt],
+    entries: [],
+    online: true,
+    database: true,
+    search: async (query, branded) => {
+      assert.equal(branded, false);
+      queries.push(query);
+      return [yogurt, fruit];
+    },
+    estimate: async () => {
+      throw new Error("Should not estimate a verified fruit");
+    },
+  });
+  assert.equal(result.food.id, "cherry");
+  assert.deepEqual(queries, ["cherries sweet raw"]);
+});
+test("plain produce never falls back to a packaged flavor when the generic database misses", async () => {
+  const p: Parsed = {
+    name: "black cherries",
+    brand: null,
+    preparation: null,
+    quantity: 100,
+    unit: "g",
+    action: "add",
+  };
+  let searches = 0;
+  await assert.rejects(
+    () =>
+      lookupFood(p, {
+        foods: [],
+        entries: [],
+        online: true,
+        database: true,
+        search: async (_, branded) => {
+          searches++;
+          assert.equal(branded, false);
+          return [];
+        },
+      }),
+    /No database match/,
+  );
+  assert.equal(searches, 1);
+});

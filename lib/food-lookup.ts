@@ -1,5 +1,5 @@
 import type { Candidate, Entry, Food, Parsed } from "./types";
-import { rankFoods } from "./matching";
+import { rankFoods, genericProduceQuery } from "./matching";
 import { scale } from "./nutrition";
 import { estimateKey } from "./estimate-reference";
 type LookupOptions = {
@@ -38,14 +38,15 @@ export async function lookupFood(p: Parsed, options: LookupOptions): Promise<Can
   if (cached) return candidate(cached, p, [cached]);
   // A request failure is not a verified database miss: leave the error visible for retry.
   if (options.online && options.database) {
-    const query = [p.brand, p.name, p.preparation].filter(Boolean).join(" ");
+    const produceQuery = genericProduceQuery(p);
+    const query = produceQuery || [p.brand, p.name, p.preparation].filter(Boolean).join(" ");
     const found = await options.search(query, !!p.brand);
     verified = rankFoods(
       [...verified, ...found.filter((f) => f.source !== "AI estimate")],
       p,
       options.entries,
     );
-    if (!verified.length && !p.brand)
+    if (!verified.length && !p.brand && !produceQuery)
       verified = rankFoods(await options.search(p.name, true), p, options.entries);
   }
   const usable = verified.find((food) => !candidate(food, p, verified).warning);
