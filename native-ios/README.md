@@ -59,3 +59,9 @@ Scan uses a full-screen AVCaptureSession with continuous autofocus, native EAN/U
 The capture bridge accepts only the trusted top-level HTTPS Counter app. Every session has a request ID; late results from a closed component are ignored. Browser/PWA installs retain their web capture fallback. Native logs in subsystem com.connorbyers.counter, category capture contain microphone-start and camera-first-preview timings, without recordings, food descriptions or barcode values. Hardware latency must be measured on the phone; a passing build does not establish a specific startup time.
 
 Capture diagnostics retain the last 40 request stage durations in Application Support/Counter/capture-timings.json. Only stage (transcribe/search/parse/etc.), duration and timestamp are recorded; food descriptions, audio, response bodies and credentials are excluded. Use a fresh device attempt to distinguish transcription and lookup latency instead of treating server timings from a Mac as phone measurements.
+
+### Live voice transcription
+
+The native app prefers SFSpeechRecognizer with AVAudioEngine and requiresOnDeviceRecognition enabled after checking device support. Partial transcripts appear during recording. Stop ends audio immediately, then a final recognition result is sent directly into the food lookup; the normal path makes no /api/transcribe request. Recording is manual-stop (60-second safety limit), so normal pauses do not prematurely submit a longer description.
+
+Apple's one-time Speech Recognition permission is requested on first use. Unsupported/denied/failed local recognition retains the AAC recording and falls back to the existing server transcription/retry path. A two-second finalization timeout is only a failure fallback, not a mandatory delay. Buffers are copied from the audio callback to the capture queue before encoding or recognition. Audio stays local until fallback is needed.

@@ -17,6 +17,9 @@ export function NativeVoice({
   compact?: boolean;
 }) {
   const [phase, setPhase] = useState("opening");
+  const [liveText, setLiveText] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const submitted = useRef(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<{ blob: Blob; id: string } | null>(null);
   const [url, setUrl] = useState("");
@@ -53,13 +56,25 @@ export function NativeVoice({
     }
     setError("");
     setPhase("opening");
+    setLiveText("");
+    submitted.current = false;
     captureCommand("voice.start", id.current);
   }
   useEffect(() => {
     active.current = true;
     id.current = crypto.randomUUID();
     const unsubscribe = subscribeCapture(id.current, (event) => {
-      if (event.type === "recording") setPhase("recording");
+      if (event.type === "recording") {
+        setPhase("recording");
+        setStreaming(!!event.streaming);
+      }
+      if (event.type === "partial" && event.text) setLiveText(event.text);
+      if (event.type === "transcript" && event.text && !submitted.current) {
+        submitted.current = true;
+        if (event.recordingId)
+          captureCommand("voice.clear", id.current, { recordingId: event.recordingId });
+        callback.current(event.text);
+      }
       if (event.type === "idle") {
         setPhase("idle");
         if (autoStart && enabled) start();
@@ -135,18 +150,25 @@ export function NativeVoice({
           : phase === "opening"
             ? "Opening microphone…"
             : phase === "finishing"
-              ? "Recording stopped"
+              ? "Finishing transcript…"
               : phase === "transcribing"
                 ? "Transcribing…"
                 : "Speak your food"}
       </h3>
       <p>
         {phase === "recording"
-          ? "Pause when finished · tap to stop anytime"
+          ? streaming
+            ? "Tap Stop to find your food"
+            : "Pause when finished · tap to stop anytime"
           : phase === "transcribing"
             ? "Your recording is captured. Finding the words…"
             : "Tap the mic to speak"}
       </p>
+      {liveText && (
+        <p className="live-transcript" aria-live="polite">
+          {liveText}
+        </p>
+      )}
       {saved && (
         <div className="audio-review">
           <audio controls src={url} />

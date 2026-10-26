@@ -1,6 +1,16 @@
 export type CaptureEvent = {
   id: string;
-  type: "recording" | "audio" | "barcode" | "cancelled" | "idle" | "error";
+  type:
+    | "recording"
+    | "partial"
+    | "transcript"
+    | "audio"
+    | "barcode"
+    | "cancelled"
+    | "idle"
+    | "error";
+  text?: string;
+  streaming?: boolean;
   base64?: string;
   recordingId?: string;
   code?: string;

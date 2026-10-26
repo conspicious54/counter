@@ -1,4 +1,5 @@
 import AVFoundation
+import Speech
 import UIKit
 import WebKit
 import os
@@ -7,6 +8,7 @@ import os
 final class NativeCapture: NSObject, AVAudioRecorderDelegate {
     weak var web: WKWebView?
     private let audioQueue = DispatchQueue(label: "counter.capture.audio", qos: .userInitiated)
+    private var live: LiveSpeech?
     private var recorder: AVAudioRecorder?
     private var audioID: String?
     private var recordingID: String?
@@ -57,10 +59,10 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
         case "voice.start": startVoice(id)
         case "voice.stop":
             if requestedVoice == id { requestedVoice = nil }
-            audioQueue.async { self.finishVoice(id: id, deliver: true) }
+            audioQueue.async { self.endVoice(id: id, deliver: true) }
         case "voice.cancel":
             if requestedVoice == id { requestedVoice = nil }
-            audioQueue.async { self.finishVoice(id: id, deliver: false) }
+            audioQueue.async { self.endVoice(id: id, deliver: false) }
         case "voice.recover":
             audioQueue.async {
                 let files = self.savedRecordings()
@@ -95,6 +97,38 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
                     self.event(id, "error", ["message": "Microphone access is off. Enable it in Settings → Counter."])
                     return
                 }
+                self.prepareVoice(id, tap: tap)
+            }
+        }
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: permission(true)
+        case .denied: permission(false)
+        default: AVAudioApplication.requestRecordPermission(completionHandler: permission)
+        }
+    }
+    private func prepareVoice(_ id: String, tap: TimeInterval) {
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")),
+              recognizer.supportsOnDeviceRecognition else { startRecordedVoice(id, tap: tap); return }
+        let ready: (SFSpeechRecognizerAuthorizationStatus) -> Void = { [weak self] status in
+            DispatchQueue.main.async {
+                guard let self = self, self.requestedVoice == id else { return }
+                guard status == .authorized else { self.startRecordedVoice(id, tap: tap); return }
+                self.audioQueue.async {
+                    guard self.live == nil, self.recorder == nil else { return }
+                    if let pending = self.savedRecordings().first { self.deliverAudio(pending, to: id, recovered: true); return }
+                    let live = LiveSpeech(id: id, queue: self.audioQueue, recognizer: recognizer, directory: self.recordings,
+                        emit: { [weak self] type, fields in self?.event(id, type, fields) },
+                        completed: { [weak self] in self?.live = nil },
+                        fallback: { [weak self] url in self?.deliverAudio(url, to: id, recovered: false) })
+                    do { self.live = live; try live.start() }
+                    catch { self.live = nil; self.startRecordedVoice(id, tap: tap) }
+                }
+            }
+        }
+        if SFSpeechRecognizer.authorizationStatus() == .notDetermined { SFSpeechRecognizer.requestAuthorization(ready) }
+        else { ready(SFSpeechRecognizer.authorizationStatus()) }
+    }
+    private func startRecordedVoice(_ id: String, tap: TimeInterval) {
                 self.audioQueue.async {
                     guard self.recorder == nil else { self.event(id, "error", ["message": "A recording is already running."]); return }
                     guard self.savedRecordings().isEmpty else {
@@ -131,13 +165,6 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
                         self.event(id, "error", ["message": "Couldn't start the microphone. Please try again."])
                     }
                 }
-            }
-        }
-        switch AVAudioApplication.shared.recordPermission {
-        case .granted: permission(true)
-        case .denied: permission(false)
-        default: AVAudioApplication.requestRecordPermission(completionHandler: permission)
-        }
     }
     func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
         audioQueue.async {
@@ -156,6 +183,10 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
         if (speechSamples >= 3 && now - lastSpeech > 1.0) || now - startedAt >= 60 {
             finishVoice(id: id, deliver: true)
         }
+    }
+    private func endVoice(id: String, deliver: Bool) {
+        if let live = live, live.id == id { live.stop(deliver: deliver) }
+        else { finishVoice(id: id, deliver: deliver) }
     }
     private func finishVoice(id: String, deliver: Bool) {
         guard audioID == id, let recorder = recorder else { return }
@@ -184,6 +215,7 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
     private func startScanner(_ id: String) {
         requestedVoice = nil
         audioQueue.async {
+            if let live = self.live { live.stop(deliver: false) }
             if let current = self.audioID { self.finishVoice(id: current, deliver: false) }
         }
         if scanner?.requestID == id { return }
@@ -203,12 +235,18 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
     @objc private func interrupted(_ notification: Notification) {
         guard let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
               AVAudioSession.InterruptionType(rawValue: raw) == .began else { return }
-        audioQueue.async { if let id = self.audioID { self.finishVoice(id: id, deliver: true) } }
+        audioQueue.async {
+            self.live?.stop(deliver: true)
+            if let id = self.audioID { self.finishVoice(id: id, deliver: true) }
+        }
     }
     @objc private func background() {
         requestedVoice = nil
         scanner?.close(); scanner = nil
-        audioQueue.async { if let id = self.audioID { self.finishVoice(id: id, deliver: true) } }
+        audioQueue.async {
+            self.live?.stop(deliver: true)
+            if let id = self.audioID { self.finishVoice(id: id, deliver: true) }
+        }
     }
     func cancelAll() { background() }
 }
