@@ -1864,3 +1864,27 @@ h1 {
 .voice-panel.compact .audio-review {
   grid-column: 1 / -1;
 }
+
+.scan-mode-toggle {
+  display: flex;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background: var(--soft);
+}
+.scan-mode-toggle button {
+  flex: 1;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: 11px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.scan-mode-toggle button[aria-pressed="true"] {
+  background: var(--bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+}

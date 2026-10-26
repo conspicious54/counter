@@ -74,6 +74,7 @@ export function FoodSheet({
   const [manualInitial, setManualInitial] = useState<Food | undefined>();
   const [manualIndex, setManualIndex] = useState<number | null>(null);
   const [scanner, setScanner] = useState(false);
+  const [scanMode, setScanMode] = useState<"barcode" | "label">("barcode");
   const [editing, setEditing] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [alternatives, setAlternatives] = useState<Food[]>([]);
@@ -441,7 +442,7 @@ export function FoodSheet({
             {(
               [
                 { id: "speak", label: "Speak", Icon: Mic },
-                { id: "scan", label: "Scan barcode", Icon: Barcode },
+                { id: "scan", label: "Scan", Icon: Barcode },
               ] as const
             )
               .filter(({ id }) => id !== "speak" || method !== "speak")
@@ -451,7 +452,7 @@ export function FoodSheet({
                   className={method === id ? "active" : ""}
                   onClick={() => {
                     setMethod(id);
-                    setScanner(id === "scan");
+                    setScanner(false);
                     setError("");
                   }}
                 >
@@ -515,45 +516,105 @@ export function FoodSheet({
           )}
           {method === "scan" && (
             <>
-              <div className="scan-container">
-                {scanner ? (
-                  <Scanner onCode={scanCode} />
-                ) : (
-                  <Button variant="outline" onClick={() => setScanner(true)}>
-                    <Barcode size={18} />
-                    Open camera
-                  </Button>
-                )}
+              <div className="scan-mode-toggle" role="group" aria-label="What to scan">
+                {(["barcode", "label"] as const).map((mode) => (
+                  <button
+                    type="button"
+                    key={mode}
+                    aria-pressed={scanMode === mode}
+                    disabled={busy}
+                    onClick={() => {
+                      setScanner(false);
+                      setScanMode(mode);
+                      setError("");
+                    }}
+                  >
+                    {mode === "barcode" ? "Barcode" : "Nutrition label"}
+                  </button>
+                ))}
               </div>
-              <form
-                className="barcode-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  scanCode(code);
-                }}
-              >
-                <input
-                  aria-label="Barcode number"
-                  placeholder="Or enter barcode number"
-                  inputMode="numeric"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                />
-                <Button
-                  size="icon"
-                  disabled={busy || !/^\d{8,14}$/.test(code)}
-                  aria-label="Look up barcode"
-                >
-                  <ArrowRight size={18} />
-                </Button>
-              </form>
-              {error && !busy && /^\d{8,14}$/.test(code) && (
-                <div className="barcode-form">
-                  <Button variant="outline" onClick={() => scanCode(code)}>
-                    Retry lookup
-                  </Button>
+              {scanMode === "barcode" && (
+                <>
+                  <div className="scan-container">
+                    {scanner ? (
+                      <Scanner onCode={scanCode} />
+                    ) : (
+                      <Button variant="outline" onClick={() => setScanner(true)}>
+                        <Barcode size={18} />
+                        Scan barcode
+                      </Button>
+                    )}
+                  </div>
+                  <form
+                    className="barcode-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      scanCode(code);
+                    }}
+                  >
+                    <input
+                      aria-label="Barcode number"
+                      placeholder="Or enter barcode number"
+                      inputMode="numeric"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                    />
+                    <Button
+                      size="icon"
+                      disabled={busy || !/^\d{8,14}$/.test(code)}
+                      aria-label="Look up barcode"
+                    >
+                      <ArrowRight size={18} />
+                    </Button>
+                  </form>
+                  {error && !busy && /^\d{8,14}$/.test(code) && (
+                    <div className="barcode-form">
+                      <Button variant="outline" onClick={() => scanCode(code)}>
+                        Retry lookup
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setManualInitial(undefined);
+                          setManualIndex(null);
+                          setManual(true);
+                          setError("");
+                        }}
+                      >
+                        Enter nutrition label
+                      </Button>
+                    </div>
+                  )}
+                  <small className="muted">
+                    Open Food Facts + USDA · saved labels work offline
+                  </small>
+                </>
+              )}
+              {scanMode === "label" && (
+                <>
+                  <p className="muted">
+                    Photograph the nutrition facts. We’ll read calories, protein, carbs and fat,
+                    then let you review them.
+                  </p>
+                  {config.ai ? (
+                    <LabelScan
+                      disabled={busy}
+                      onBusy={setBusy}
+                      onRead={(food) => {
+                        setManualInitial(food);
+                        setManualIndex(null);
+                        setManual(true);
+                        setScanner(false);
+                        setError("");
+                      }}
+                    />
+                  ) : (
+                    <p className="muted">
+                      Label reading is unavailable right now. You can enter the four values below.
+                    </p>
+                  )}
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => {
                       setManualInitial(undefined);
                       setManualIndex(null);
@@ -561,24 +622,10 @@ export function FoodSheet({
                       setError("");
                     }}
                   >
-                    Enter nutrition label
+                    Enter nutrition facts manually
                   </Button>
-                </div>
+                </>
               )}
-              {config.ai && (
-                <LabelScan
-                  disabled={busy}
-                  onBusy={setBusy}
-                  onRead={(food) => {
-                    setManualInitial(food);
-                    setManualIndex(null);
-                    setManual(true);
-                    setScanner(false);
-                    setError("");
-                  }}
-                />
-              )}
-              <small className="muted">Open Food Facts + USDA · saved labels work offline</small>
             </>
           )}
           {clarification && (

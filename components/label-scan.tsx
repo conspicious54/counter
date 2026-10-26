@@ -46,12 +46,12 @@ export function LabelScan({
     <div>
       <button
         type="button"
-        className="text-button"
+        className="scanner-torch"
         disabled={disabled || busy}
         onClick={() => input.current?.click()}
       >
         {busy ? <Loader2 size={17} className="spin" /> : <Camera size={17} />}{" "}
-        {busy ? "Reading nutrition label…" : "Scan nutrition label"}
+        {busy ? "Reading nutrition label…" : "Photograph nutrition label"}
       </button>
       <input
         ref={input}
