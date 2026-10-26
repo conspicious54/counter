@@ -4,6 +4,8 @@ import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser"
 import { scannerHints } from "@/lib/scanner-config";
 import { Flashlight, FlashlightOff, ScanLine } from "lucide-react";
 export function Scanner({ onCode }: { onCode: (code: string) => void }) {
+  const onCodeRef = useRef(onCode);
+  onCodeRef.current = onCode;
   const video = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const active = useRef(true);
@@ -35,45 +37,54 @@ export function Scanner({ onCode }: { onCode: (code: string) => void }) {
       delayBetweenScanAttempts: 120,
       delayBetweenScanSuccess: 500,
     });
-    reader
-      .decodeFromConstraints(
-        {
+    let capture: MediaStream | undefined;
+    // Paint the selected mode before requesting hardware; abandon late grants.
+    const startTimer = setTimeout(() => {
+      void (async () => {
+        capture = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: "environment" },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
           audio: false,
-        },
-        video.current!,
-        (result, _, ctl) => {
+        });
+        if (stopped) {
+          capture.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        return reader.decodeFromStream(capture, element!, (result, _, ctl) => {
           if (result && !stopped) {
             stopped = true;
             active.current = false;
             ctl.stop();
-            onCode(result.getText());
+            onCodeRef.current(result.getText());
           }
-        },
-      )
-      .then((c) => {
-        controls = c;
-        if (stopped) c.stop();
-        else {
-          controlsRef.current = c;
-          const stream = element?.srcObject as MediaStream | null;
-          const capability = stream?.getVideoTracks()[0]?.getCapabilities?.() as
-            | (MediaTrackCapabilities & { torch?: boolean })
-            | undefined;
-          setTorchAvailable(typeof c.switchTorch === "function" && capability?.torch !== false);
-        }
-      })
-      .catch(() => {
-        if (!stopped)
-          setError(
-            "Camera unavailable. Allow camera access in your device settings, or enter the barcode below.",
-          );
-      });
+        });
+      })()
+        .then((c) => {
+          if (!c) return;
+          controls = c;
+          if (stopped) c.stop();
+          else {
+            controlsRef.current = c;
+            const stream = element?.srcObject as MediaStream | null;
+            const capability = stream?.getVideoTracks()[0]?.getCapabilities?.() as
+              | (MediaTrackCapabilities & { torch?: boolean })
+              | undefined;
+            setTorchAvailable(typeof c.switchTorch === "function" && capability?.torch !== false);
+          }
+        })
+        .catch(() => {
+          if (!stopped)
+            setError(
+              "Camera unavailable. Allow camera access in your device settings, or enter the barcode below.",
+            );
+        });
+    }, 0);
     return () => {
+      clearTimeout(startTimer);
+      capture?.getTracks().forEach((t) => t.stop());
       stopped = true;
       document.removeEventListener("visibilitychange", hideLight);
       active.current = false;
@@ -82,7 +93,7 @@ export function Scanner({ onCode }: { onCode: (code: string) => void }) {
       const stream = element?.srcObject as MediaStream | null;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [onCode]);
+  }, []);
   return (
     <div className="scanner-wrap">
       <div className="scanner-toolbar">

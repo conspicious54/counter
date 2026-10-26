@@ -38,6 +38,7 @@ struct CounterWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "counterBody")
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
+        web.uiDelegate = context.coordinator
         context.coordinator.web = web
         // Optional locally provisioned session, supplied only at signing time. No API key is embedded.
         if let token = Bundle.main.object(forInfoDictionaryKey: "CounterPersonalSession") as? String,
@@ -65,7 +66,14 @@ struct CounterWebView: UIViewRepresentable {
 }
 
 // Read-only BLE bridge: no vendor commands, remote tare, or credentials.
-final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate, CBCentralManagerDelegate, CBPeripheralDelegate {
+final class ScaleBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate, CBCentralManagerDelegate, CBPeripheralDelegate {
+    // iOS retains the app-level camera/microphone choice. Avoid a second
+    // WebKit prompt on every capture, only for our trusted top-level app.
+    func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+        let trusted = frame.isMainFrame && origin.protocol == "https"
+            && origin.host == CounterWebView.appURL.host && (origin.port == 443 || origin.port == 0)
+        decisionHandler(trusted ? .grant : .deny)
+    }
     weak var web: WKWebView?
     private var central: CBCentralManager!
     private var scale: CBPeripheral?

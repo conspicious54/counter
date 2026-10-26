@@ -58,7 +58,7 @@ export function FoodSheet({
   onFood: (f: Food) => void;
   onRecipe: (r: Recipe) => void;
 }) {
-  const [method, setMethod] = useState<"speak" | "scan" | "type">("speak");
+  const [method, setMethod] = useState<"speak" | "scan" | "type">("type");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -91,7 +91,7 @@ export function FoodSheet({
     setText("");
     setClarification("");
     setError("");
-    setMethod("speak");
+    setMethod("type");
   }
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export function FoodSheet({
         setError((e as Error).message);
         return;
       }
-      setMethod("speak");
+      setMethod("type");
       setAddingIngredient(false);
       setWeighing(null);
       setDraftLoaded(true);
@@ -383,10 +383,11 @@ export function FoodSheet({
     try {
       const items = recipeItems(candidates);
       if (saveRecipe) {
-        if (!recipeName.trim()) throw new Error("Give your recipe a name.");
+        const name = candidates.length === 1 ? candidates[0].food.name : recipeName.trim();
+        if (!name) throw new Error("Give your meal a name.");
         onRecipe({
           id: crypto.randomUUID(),
-          name: recipeName.trim(),
+          name,
           items,
         });
       }
@@ -988,9 +989,9 @@ export function FoodSheet({
             />
             Save as a reusable meal
           </label>
-          {saveRecipe && (
+          {saveRecipe && candidates.length > 1 && (
             <input
-              aria-label="Recipe name"
+              aria-label="Meal name"
               className="full-input"
               placeholder="e.g. Breakfast sandwich"
               value={recipeName}
