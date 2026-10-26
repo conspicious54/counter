@@ -286,3 +286,38 @@ test("plain produce never falls back to a packaged flavor when the generic datab
   );
   assert.equal(searches, 1);
 });
+
+test("a common spelling variant matches the verified database record without AI fallback", async () => {
+  const p: Parsed = {
+    name: "spagetti squash",
+    brand: null,
+    preparation: null,
+    quantity: 100,
+    unit: "g",
+    action: "add",
+  };
+  const squash: Food = {
+    id: "squash",
+    name: "Squash, winter, spaghetti, raw",
+    source: "USDA",
+    basis: { quantity: 100, unit: "g" },
+    nutrients: { calories: 31, protein: 0.64, carbs: 6.91, fat: 0.57 },
+  };
+  let queries = 0;
+  const result = await lookupFood(p, {
+    foods: [],
+    entries: [],
+    online: true,
+    database: true,
+    search: async (query) => {
+      queries++;
+      assert.equal(query, "spaghetti squash");
+      return [squash];
+    },
+    estimate: async () => {
+      throw new Error("Must not estimate this ingredient");
+    },
+  });
+  assert.equal(result.food.id, "squash");
+  assert.equal(queries, 1);
+});

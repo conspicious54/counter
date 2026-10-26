@@ -1,3 +1,5 @@
+import { cachedFoods, rememberLookup } from "./food-cache";
+import { foodSpelling } from "./food-spelling";
 import type { Candidate, Entry, Food, Parsed } from "./types";
 import { rankFoods, genericProduceQuery } from "./matching";
 import { scale } from "./nutrition";
@@ -20,7 +22,11 @@ function candidate(food: Food, p: Parsed, alternatives: Food[]): Candidate {
   return c;
 }
 export async function lookupFood(p: Parsed, options: LookupOptions): Promise<Candidate> {
-  const local = options.foods.filter((f) => f.source !== "Demo");
+  const local = [
+    ...new Map(
+      [...cachedFoods(), ...options.foods].filter((f) => f.source !== "Demo").map((f) => [f.id, f]),
+    ).values(),
+  ];
   let verified = rankFoods(
     local.filter((f) => f.source !== "AI estimate"),
     p,
@@ -39,8 +45,11 @@ export async function lookupFood(p: Parsed, options: LookupOptions): Promise<Can
   // A request failure is not a verified database miss: leave the error visible for retry.
   if (options.online && options.database) {
     const produceQuery = genericProduceQuery(p);
-    const query = produceQuery || [p.brand, p.name, p.preparation].filter(Boolean).join(" ");
+    const query = foodSpelling(
+      produceQuery || [p.brand, p.name, p.preparation].filter(Boolean).join(" "),
+    );
     const found = await options.search(query, !!p.brand);
+    rememberLookup(found);
     verified = rankFoods(
       [...verified, ...found.filter((f) => f.source !== "AI estimate")],
       p,

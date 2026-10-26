@@ -43,6 +43,17 @@ final class NativeCapture: NSObject, AVAudioRecorderDelegate {
         guard let action = body["action"] as? String, let id = body["id"] as? String,
               id.count <= 100 else { return }
         switch action {
+        case "timing":
+            guard let stage = body["stage"] as? String,
+                  ["transcribe", "parse", "search", "estimate", "barcode", "label"].contains(stage),
+                  let duration = body["durationMs"] as? Double, duration.isFinite,
+                  duration >= 0, duration <= 300000 else { return }
+            audioQueue.async {
+                let path = self.recordings.deletingLastPathComponent().appendingPathComponent("capture-timings.json")
+                var rows = ((try? Data(contentsOf: path)).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [[String: Any]]) ?? []
+                rows.append(["stage": stage, "durationMs": duration, "at": ISO8601DateFormatter().string(from: Date())])
+                if let data = try? JSONSerialization.data(withJSONObject: Array(rows.suffix(40))) { try? data.write(to: path, options: .atomic) }
+            }
         case "voice.start": startVoice(id)
         case "voice.stop":
             if requestedVoice == id { requestedVoice = nil }

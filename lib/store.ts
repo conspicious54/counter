@@ -115,6 +115,35 @@ export async function session() {
   return signed.data.session;
 }
 export async function request(path: string, options: RequestInit = {}) {
+  const started = performance.now();
+  try {
+    return await performRequest(path, options);
+  } finally {
+    const stage = path.split("?")[0].replace("/api/", "");
+    if (["transcribe", "parse", "search", "estimate", "barcode", "label"].includes(stage)) {
+      const bridge = (
+        typeof window === "undefined"
+          ? undefined
+          : (window as unknown as {
+              webkit?: {
+                messageHandlers?: { counterCapture?: { postMessage: (body: object) => void } };
+              };
+            })
+      )?.webkit?.messageHandlers?.counterCapture;
+      try {
+        bridge?.postMessage({
+          action: "timing",
+          id: "request",
+          stage,
+          durationMs: Math.round(performance.now() - started),
+        });
+      } catch {
+        /* Diagnostics must never affect a food request. */
+      }
+    }
+  }
+}
+async function performRequest(path: string, options: RequestInit = {}) {
   const s = await session();
   const r = await fetch(path, {
     ...options,

@@ -1,4 +1,5 @@
 import type { Entry, Food, Parsed } from "./types";
+import { foodSpelling } from "./food-spelling";
 const ignored = new Set(["the", "of", "food", "large", "medium", "small", "fresh"]);
 const stem = (word: string) =>
   word === "berries"
@@ -7,7 +8,7 @@ const stem = (word: string) =>
       ? word.slice(0, -3) + "y"
       : word.replace(/s$/, "");
 export function foodTokens(name: string) {
-  return name
+  return foodSpelling(name)
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 1 && !ignored.has(w))
